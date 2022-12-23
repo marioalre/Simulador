@@ -1,11 +1,12 @@
-class CelestialBodies():
-	def __init__(self, name):
-		self.name = name
+from src.Orbit import Orbit
+
+class CelestialBodies(Orbit):
+	def __init__(self):
 		self.mu = 0
 		self.radius = 0
 
 	def __str__(self):
-		return self.name, self.mu, self.radius
+		return self.mu, self.radius
 			
 
 	def earth(self):
