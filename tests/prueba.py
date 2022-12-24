@@ -1,19 +1,20 @@
-from astropy import units as u
+from src.Orbit import Orbit
+from src.CelestialBodies import CelestialBodies
 import numpy as np
 
-from poliastro.bodies import Earth, Mars, Sun
-from poliastro.twobody import Orbit
+Tierra = CelestialBodies()
+Tierra.earth()
 
-r = [2855, -35639, -24309] << u.km
-v = [-1.656, -4.455, -3.2803] << u.km / u.s
+# Orbit
+Orbita = Orbit(Tierra)
 
-orb = Orbit.from_vectors(Earth, r, v)
+r0 = np.array([ 7000, -12124, 0])# km
+v0 = np.array([2.6679, 4.6210, 0])# km/s
+dt = 3600 # s
+# Print results
+r, v = Orbita.r0v02rv(r0 = r0, v0 = v0, dt = dt)
 
+print('Position vector: {} km'.format(r))
+print('Velocity vector: {} km/s'.format(v))
 
-print(orb.a)
-print(orb.ecc)
-print(orb.inc * 180 / np.pi)
-print(orb.raan * 180 / np.pi)
-print(orb.argp  * 180 / np.pi)
-print(orb.nu * 180 / np.pi)
 
