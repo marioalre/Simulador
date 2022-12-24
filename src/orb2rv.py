@@ -7,7 +7,25 @@ class Orb2rv(Orbit):
     '''Orbital parameters to position and velocity vectors'''
 
     def __init__(self, h, e, Omega, omega, i, nu, body):
-        '''Initialize the class'''
+        '''Initialize the class
+        Parameters
+        ----------
+        h : float
+            Specific angular momentum
+        e : float
+            Eccentricity
+        Omega : float
+            Right ascension of the ascending node
+        omega : float
+            Argument of periapsis
+        i : float
+            Inclination
+        nu : float
+            True anomaly
+        body : Body
+            Body object
+            '''
+            
         self.h = h
         self.e = e
         self.Omega = Omega

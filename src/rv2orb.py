@@ -4,7 +4,22 @@ import numpy as np
 from src.Orbit import Orbit
 
 class Rv2orb(Orbit):
+    '''Position and velocity vectors to orbital parameters'''
     def __init__(self, r, v, body, t0, t):
+        '''Initialize the class
+        Parameters
+        ----------
+        r : numpy array
+            Position vector ECI
+        v : numpy array
+            Velocity vector ECI
+        body : Body
+            Body object
+        t0 : float
+            Initial time
+        t : float
+            Final time
+        '''
         self.r = r   # position vector ECI 
         self.v = v   # velocity vector ECI
         self.mu = body.mu
@@ -92,6 +107,7 @@ class Rv2orb(Orbit):
 
     def eccentric_anomaly(self):
         '''Eccentric anomaly in radians'''
-        return np.arctan2(np.dot(self.r, self.v) / (self.e * np.sqrt(self.mu * self.a)), (self.a - np.linalg.norm(self.r) / (self.a*self.e)))
+        return np.arctan2(np.dot(self.r, self.v) / (self.e * np.sqrt(self.mu * self.a)), 
+        (self.a - np.linalg.norm(self.r) / (self.a*self.e)))
 
     

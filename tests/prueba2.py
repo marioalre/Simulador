@@ -4,6 +4,7 @@ import numpy as np
 from src.rv2orb import Rv2orb
 from src.orb2rv import Orb2rv
 from src.CelestialBodies import CelestialBodies
+from src.Orbit import Orbit
 
 if __name__ == '__main__':
     # Initial conditions
@@ -37,7 +38,8 @@ if __name__ == '__main__':
 
     orbit = Orb2rv(h, e, Omega, omega, i, nu, cuerpo)
 
-    print(orbit.rotation_matrix())
     print('Position vector: {} km'.format(orbit.r))
     print('Velocity vector: {} km/s'.format(orbit.v))
+
+
 

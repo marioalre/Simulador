@@ -1,6 +1,7 @@
 from src.Orbit import Orbit
 
 class CelestialBodies(Orbit):
+	'''Celestial bodies parameters'''
 	def __init__(self):
 		self.mu = 0
 		self.radius = 0
