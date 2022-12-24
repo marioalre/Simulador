@@ -1,4 +1,5 @@
 import numpy as np
+from matplotlib import pyplot as plt
 
 class Orbit():
     def __init__(self, body):
@@ -274,13 +275,9 @@ class Orbit():
         # alpha = 0 : parabolic orbit
         # alpha < 0 : hyperbolic orbit
 
-        print(r0n, vr0, alpha)
-
         chi = self.Kepler_universal(r0n, vr0, dt, alpha)
-        print(chi)
 
         f, g = self.lagrange_coeff(chi, dt, r0n, alpha)
-        print(f, g)
 
         r = f * r0 + g * v0
 
@@ -289,6 +286,63 @@ class Orbit():
         df, dg = self.d_lagrange_coeff(chi, rn, r0n, alpha)
 
         v = df * r0 + dg * v0
+
+        return r, v
+
+    def propagate(self, r0, v0, tf, dt):
+        '''Propagate the orbit forward in time
+
+        Parameters
+        ----------
+        r0 : float
+            Initial position vector in km
+        v0 : float
+            Initial velocity vector in km/s
+        tf : float
+            Final time in seconds
+        dt : float
+            Time since periapsis in seconds
+        Returns
+        -------
+        r : float
+            Final position vector in km
+        v : float
+            Final velocity vector in km/s
+        '''
+
+        time = np.linspace(0, tf, dt, endpoint=True)
+
+        # vector of position and velocity
+
+        r = np.zeros((len(time), 3))
+        v = np.zeros((len(time), 3))
+
+        for i, t in enumerate(time):
+            r0, v0 = self.r0v02rv(r0, v0, dt)
+            r[i , :] = r0
+            v[i , :] = v0
+
+        # Figure
+
+        fig = plt.figure()
+
+        ax = fig.add_subplot(111, projection='3d')
+
+        ax.plot(r[:, 0], r[:, 1], r[:, 2], label='orbit')
+
+        ax.plot([0], [0], [0], 'o', label='Earth', color='green', markersize=self.radius/1000)
+
+
+        ax.set_xlabel('X [km]')
+
+        ax.set_ylabel('Y [km]')
+
+        ax.set_zlabel('Z [km]')
+
+        ax.legend()
+
+        plt.show()
+
 
         return r, v
 
