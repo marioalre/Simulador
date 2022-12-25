@@ -58,10 +58,17 @@ from src.utilities import Utilities
 print('--------------------------------------------------')
 
 util = Utilities()
-r1 = [-294.32, 4265.1, 5986.7]
-r2 = [-1365.4, 3637.6, 6346.8]
-r3 = [-2940.3, 2473.7, 6555.8]
+r0 = [3419.85564, 6019.82602, 2784.60022]
+t = 0
+r1 = [2935.91195, 6326.18324 , 2660.59584]
+t1 = 1*60 + 16.48
+r2 = [ 2434.95202, 6597.38674, 2521.52311]
+t2 = 2*60 + 33.04
 
-v2, irr = util.Gibbs(r1, r2, r3)
+
+v2, irr = util.Gibbs(r0, r1, r2)
+
+v21 = util.HERRICK_GIBBS(r0, r1, r2, t0, t1, t2)
 
 print('Velocity vector: {} km/s'.format(v2))
+print('Velocity vector: {} km/s'.format(v21))
