@@ -42,3 +42,26 @@ print('Argument of periapsis: {} deg'.format(np.rad2deg(orbit.omega)))
 print('True anomaly: {} deg'.format(np.rad2deg(orbit.nu)))
 
 
+'''
+from src.utilities import Utilities
+
+print('--------------------------------------------------')
+
+util = Utilities()
+
+times = util.findTOF(r0 ,r[-1, :], orbit.a)
+
+print('Time of flight: {} s'.format(times))
+'''
+from src.utilities import Utilities
+
+print('--------------------------------------------------')
+
+util = Utilities()
+r1 = [-294.32, 4265.1, 5986.7]
+r2 = [-1365.4, 3637.6, 6346.8]
+r3 = [-2940.3, 2473.7, 6555.8]
+
+v2, irr = util.Gibbs(r1, r2, r3)
+
+print('Velocity vector: {} km/s'.format(v2))

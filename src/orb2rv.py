@@ -70,6 +70,10 @@ class Orb2rv(Orbit):
         '''Velocity vector ECI 4.46'''
         return self.rotation_matrix() @ self.velocity()
 
+    def hfromp(self):
+        '''Get h from p'''
+        return np.sqrt(self.mu * self.p)
+
 
     
 
