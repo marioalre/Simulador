@@ -1,6 +1,7 @@
 from src.Orbit import Orbit
 from src.CelestialBodies import CelestialBodies
 import numpy as np
+from src.rv2orb import Rv2orb
 
 Tierra = CelestialBodies()
 Tierra.earth()
@@ -23,5 +24,21 @@ tf = 3600*24*360 # s
 dt = 120 # s
 
 r, v = Orbita.propagate(r0 = r0, v0 = v0, tf = tf, dt = dt)
+
+
+t0 = 0
+t = 3600
+
+# Orbit
+
+orbit = Rv2orb(r[-1, :], v[-1, :], Tierra, t0, t)
+
+# Print results
+print('Semi-major axis: {} km'.format(orbit.a))
+print('Eccentricity: {}'.format(np.linalg.norm(orbit.e)))
+print('Inclination: {} deg'.format(np.rad2deg(orbit.i)))
+print('Ascending node: {} deg'.format(np.rad2deg(orbit.Omega)))
+print('Argument of periapsis: {} deg'.format(np.rad2deg(orbit.omega)))
+print('True anomaly: {} deg'.format(np.rad2deg(orbit.nu)))
 
 
