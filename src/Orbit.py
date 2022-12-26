@@ -251,7 +251,7 @@ class Orbit():
         v0 : float
             Initial velocity vector in km/s
         dt : float
-            Time since periapsis in seconds
+            Elapsed time in senconds
         Returns
         -------
         r : float
@@ -310,23 +310,33 @@ class Orbit():
             Final velocity vector in km/s
         '''
 
-        time = np.linspace(0, tf, dt, endpoint=True)
+        r0 = np.array(r0)
+        v0 = np.array(v0)
+        
+        time = np.arange(0, tf, dt, dtype=float)
 
         # vector of position and velocity
 
-        r = np.zeros((len(time), 3))
-        v = np.zeros((len(time), 3))
+        r = np.zeros((len(time)+1, 3))
+        v = np.zeros((len(time)+1, 3))
+
+        r[0, :] = r0
+        v[0, :] = v0
 
         for i, t in enumerate(time):
             r0, v0 = self.r0v02rv(r0, v0, dt)
-            r[i , :] = r0
-            v[i , :] = v0
+            r[i+1 , :] = r0
+            v[i+1, :] = v0
 
-        # Figure
+        plt.style.use('dark_background')
+        # plt.rcParams['grid.color'] = "black"
 
         fig = plt.figure()
 
         ax = fig.add_subplot(111, projection='3d')
+        # ax.w_xaxis.set_pane_color((0.0, 0.0, 0.0, 0.8))
+        # ax.w_yaxis.set_pane_color((0.0, 0.0, 0.0, 0.6))
+        # ax.w_zaxis.set_pane_color((0.0, 0.0, 0.0, 1.0))
 
         ax.plot(r[:, 0], r[:, 1], r[:, 2], label='orbit')
 
@@ -344,7 +354,7 @@ class Orbit():
         plt.show()
 
 
-        return r, v
+        return r, v, ax
 
 
 

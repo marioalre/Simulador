@@ -1,39 +1,45 @@
+from src.CelestialBodies import CelestialBodies
+from src.Lambert import Lambert
+from src.Orbit import Orbit
+from matplotlib import pyplot as plt
 import numpy as np
 
-# gravitational constant (m^3/s^2)
-G = 6.67430e-11
+# Initial position vector
+r1 = np.array([5000, 10000, 2100])
+r2 = np.array([-14600, 2500, 7000])
 
-# masses of the bodies (kg)
-masses = np.array([5.972e24, 7.34767309e22])
+earth = CelestialBodies()
+earth.earth()
 
-# positions of the bodies (m)
-positions = np.array([[0.0, 0.0, 0.0], [384400000.0, 0.0, 0.0]])
+lambert = Lambert(r1, r2, earth)
+v1 = lambert.minimum_energy()
 
-# time step (s)
-dt = 60.0
+print('Initial velocity vector: {} km/s'.format(v1))
 
-def propagate_orbit(r, v):
-  # compute acceleration due to gravity
-  a = np.zeros_like(r)
-  for i in range(len(masses)):
-    ri = positions[i] - r
-    a += -G * masses[i] / np.linalg.norm(ri)**3 * ri
-  
-  # update velocity and position
-  v += a * dt
-  r += v * dt
-  
-  return r, v
 
-# initial position (m)
-r0 = np.array([-24364566.0, -47457512.0, 2101572.0])
+# Propagador
 
-# initial velocity (m/s)
-v0 = np.array([5996.0, -3490.0, 7420.0])
+orbit = Orbit(earth)
 
-# propagate orbit for 10 minutes
-for i in range(10):
-  r0, v0 = propagate_orbit(r0, v0)
-  
-print(r0)
-print(v0)
+# Propagate the orbit
+r, v, ax = orbit.propagate(r0 = r1, v0 = v1, tf = 3600*1.9, dt = 1)
+
+# Añadir los vectores posicion r1 y r2
+# Create a figure and an axes.
+fig, ax = plt.subplots()
+ax = fig.add_subplot(111, projection='3d')
+
+# Plot the point in 3d.
+ax.plot(r[:, 0], r[:, 1], r[:, 2], label = 'Orbit')
+
+ax.plot([0], [0], [0], 'o', label='Earth', color='green', markersize=earth.radius/1000)
+
+ax.plot([r1[0]], [r1[1]], [r1[2]], 'o', label='r1', color='red', markersize=5)
+
+ax.plot([r2[0]], [r2[1]], [r2[2]], 'o', label='r2', color='blue', markersize=5)
+
+ax.legend()
+
+plt.show()
+
+
