@@ -16,6 +16,9 @@ v1 = lambert.minimum_energy()
 
 print('Initial velocity vector: {} km/s'.format(v1))
 
+v11 , v22 = lambert.universal(3600, 'pro')
+print('Initial velocity vector: {} km/s'.format(v11))
+print('Final velocity vector: {} km/s'.format(v22))
 
 # Propagador
 
