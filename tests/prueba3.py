@@ -25,10 +25,11 @@ print('Final velocity vector: {} km/s'.format(v22))
 orbit = Orbit(earth)
 
 # Propagate the orbit
-r, v, ax = orbit.propagate(r0 = r1, v0 = v1, tf = 3600*1.9, dt = 1)
+r, v, ax = orbit.propagate(r0 = r1, v0 = v1, tf = 3600*1.85, dt = 1)
 
 # Añadir los vectores posicion r1 y r2
 # Create a figure and an axes.
+plt.style.use('classic')
 fig, ax = plt.subplots()
 ax = fig.add_subplot(111, projection='3d')
 
@@ -42,6 +43,12 @@ ax.plot([r1[0]], [r1[1]], [r1[2]], 'o', label='r1', color='red', markersize=5)
 ax.plot([r2[0]], [r2[1]], [r2[2]], 'o', label='r2', color='blue', markersize=5)
 
 ax.legend()
+
+ax.set_xlabel('X [km]')
+ax.set_ylabel('Y [km]')
+ax.set_zlabel('Z [km]')
+
+ax.set_title('Orbit')
 
 plt.show()
 
