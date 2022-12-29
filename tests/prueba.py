@@ -20,10 +20,10 @@ print('Velocity vector: {} km/s'.format(v))
 
 # Propagate the orbit
 
-tf = 3600*24*360 # s
-dt = 120 # s
+tf = 3600*24 # s
+dt = 360 # s
 
-r, v = Orbita.propagate(r0 = r0, v0 = v0, tf = tf, dt = dt)
+r, v, ax = Orbita.propagate(r0 = r0, v0 = v0, tf = tf, dt = dt)
 
 
 t0 = 0
@@ -72,3 +72,13 @@ v21 = util.HERRICK_GIBBS(r0, r1, r2, t0, t1, t2)
 
 print('Velocity vector: {} km/s'.format(v2))
 print('Velocity vector: {} km/s'.format(v21))
+
+print('--------------------------------------------------')
+# Tiempo de vuelo entre dos puntos
+
+r0 = np.array([-2574.9533, 4267.0671, 4431.5026]) # km
+r1 = np.array([2700.6738, -4303.5378, -4358.2499]) # km
+p = 6681.571
+
+times = util.findTOF(r0, r1, p)
+print('Time of flight: {} s'.format(times))

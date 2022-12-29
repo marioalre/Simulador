@@ -7,7 +7,7 @@ class Utilities:
         else:
             self.mu = 398600.4418 # km^3/s^2
 
-    def findTOF(self, r0, r1, p):
+    def findTOF(self, R0, R1, p):
         '''
         Find time of flight
         Parameters
@@ -27,41 +27,44 @@ class Utilities:
         ATTENTION: This function is not working properly
         '''
 
-        cosdv = np.dot(r0, r1) / (np.linalg.norm(r0) * np.linalg.norm(r1))
+        r0 = np.linalg.norm(R0)
+        r1 = np.linalg.norm(R1)
 
-        k = np.linalg.norm(r0) * np.linalg.norm(r1) * (1 - cosdv)
+        cosdv = np.dot(R0, R1) / (r0 * r1)
 
-        l = np.linalg.norm(r0) + np.linalg.norm(r1)
+        k = r0 * r1 * (1 - cosdv)
 
-        m = np.linalg.norm(r0) * np.linalg.norm(r1) * (1 + cosdv)
+        l = r0 + r1
+
+        m = r0 * r1 * (1 + cosdv)
 
         a = (m * k * p) / ((2*m-l**2)*p**2 + 2*k*l*p - k**2)
 
-        f = 1- np.linalg.norm(r1) / p * (1 - cosdv)
+        f = 1- r1 / p * (1 - cosdv)
 
-        g = np.linalg.norm(r0) * np.linalg.norm(r1) * np.sin(np.arccos(cosdv)) / np.sqrt(p * self.mu)
+        g = r0 * r1 * np.sin(np.arccos(cosdv)) / np.sqrt(p * self.mu)
 
         if a > 0:
             # Elliptic
-            df = np.sqrt(self.mu / p) * np.tan(np.arccos(cosdv)/2) *((1 - cosdv) / p - 1 / np.linalg.norm(r0) - 1 / np.linalg.norm(r1)) 
+            df = np.sqrt(self.mu / p) * np.tan(np.arccos(cosdv)/2) *((1 - cosdv) / p - 1 / r0 - 1 / r1) 
 
-            cosde = 1 - np.linalg.norm(r0) / a * (1 - f)
+            cosde = 1 - r0 / a * (1 - f)
 
-            sinde = - np.linalg.norm(r0) * np.linalg.norm(r1) * df / (np.sqrt(p * self.mu))
+            sinde = - r0 * r1 * df / (np.sqrt(a * self.mu))
 
             TOF = g + np.sqrt(a**3 / self.mu) * (np.arccos(cosde) - sinde)
 
         elif a == np.inf:
             # Parabolic
-            c = np.sqrt(np.linalg.norm(r0)**2 + np.linalg.norm(r1)**2 - 2 * np.linalg.norm(r0) * np.linalg.norm(r1) * cosdv)
+            c = np.sqrt(r0**2 + r1**2 - 2 * r0 * r1 * cosdv)
 
-            s = (np.linalg.norm(r0) + np.linalg.norm(r1) + c) / 2
+            s = (r0 + r1 + c) / 2
 
             TOF = 2/3 * np.sqrt(s**3 / (2*self.mu)) * (1 - ((s - c) / s)**(3/2))
 
         else:
             # Hyperbolic
-            cosdh = 1 + np.linalg.norm(r0) / a * (f - 1)
+            cosdh = 1 + r0 / a * (f - 1)
 
             TOF = g + np.sqrt(-a**3 / self.mu) * (np.sinh(np.arccosh(cosdh)) - np.arccosh(cosdh))
 
