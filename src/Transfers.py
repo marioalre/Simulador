@@ -121,4 +121,73 @@ class Interplanetary2D:
         time = np.sqrt(a_trans**3 / self.mu) * ((E - e_trans * np.sin(E)))  ## CHECK THIS
 
 
+    def inclination(di, phi_fpa, v0):
+        '''Inclination change
+        Parameters
+        ----------
+        di : float
+            Inclination change in degrees
+        phi_fpa : float
+            Final flight path angle in degrees
+            (Elliptic orbit)
+        v0 : float
+            Initial velocity in km/s
+        Returns
+        -------
+        dv : float
+            Delta-V in km/s
+        '''
+
+        di = np.deg2rad(di)
+        phi_fpa = np.deg2rad(phi_fpa)
+
+        return 2 * v0 * np.sin(di / 2) * np.cos(phi_fpa)
+
+    def change_ascension_node(draan, i0, v0):
+        '''Change of the ascending node for a circular orbit
+        Parameters
+        ----------
+        draan : float
+            Change of the ascending node in degrees
+        v0 : float
+            Initial velocity in km/s
+        Returns
+        -------
+        dv : float
+            Delta-V in km/s
+        '''
+
+        draan = np.deg2rad(draan)
+        i0 = np.deg2rad(i0)
+
+        cosnu = np.cos(i0)**2 + np.sin(i0)**2 * np.cos(draan)**2
+        nu = np.arccos(cosnu)
+
+        return 2 * v0 * np.sin(nu / 2)
+
+    def change_ascn_inc(i_0, i_f, draan, v0):
+        '''Change of the ascending node and inclination for a circular orbit
+        Parameters
+        ----------
+        i_0 : float
+            Initial inclination in degrees
+        i_f : float
+            Final inclination in degrees
+        draan : float
+            Change of the ascending node in degrees
+        v0 : float
+            Initial velocity in km/s
+        Returns
+        -------
+        dv : float
+            Delta-V in km/s
+        '''
         
+        draan = np.deg2rad(draan)
+        i_0 = np.deg2rad(i_0)
+        i_f = np.deg2rad(i_f)
+
+        cosnu = np.cos(i_0)*np.cos(i_f) + np.sin(i_0)*np.sin(i_f) * np.cos(draan)
+        nu = np.arccos(cosnu)
+
+        return 2 * v0 * np.sin(nu / 2)
