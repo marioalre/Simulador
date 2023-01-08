@@ -327,7 +327,7 @@ class Orbit():
             r0, v0 = self.r0v02rv(r0, v0, dt)
             r[i+1 , :] = r0
             v[i+1, :] = v0
-
+        '''
         plt.style.use('dark_background')
         # plt.rcParams['grid.color'] = "black"
 
@@ -352,9 +352,10 @@ class Orbit():
         ax.legend()
 
         plt.show()
+        '''
 
 
-        return r, v, ax
+        return r, v
 
 
 

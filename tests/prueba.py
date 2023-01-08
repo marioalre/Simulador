@@ -1,6 +1,7 @@
 from src.Orbit import Orbit
 from src.CelestialBodies import CelestialBodies
 import numpy as np
+import matplotlib.pyplot as plt
 from src.rv2orb import Rv2orb
 
 Tierra = CelestialBodies()
@@ -23,9 +24,35 @@ print('Velocity vector: {} km/s'.format(v))
 tf = 3600*24 # s
 dt = 360 # s
 
-r, v, ax = Orbita.propagate(r0 = r0, v0 = v0, tf = tf, dt = dt)
+r, v = Orbita.propagate(r0 = r0, v0 = v0, tf = tf, dt = dt)
+
+##################################################
+plt.style.use('dark_background')
+# plt.rcParams['grid.color'] = "black"
+
+fig = plt.figure()
+
+ax = fig.add_subplot(111, projection='3d')
+# ax.w_xaxis.set_pane_color((0.0, 0.0, 0.0, 0.8))
+# ax.w_yaxis.set_pane_color((0.0, 0.0, 0.0, 0.6))
+# ax.w_zaxis.set_pane_color((0.0, 0.0, 0.0, 1.0))
+
+ax.plot(r[:, 0], r[:, 1], r[:, 2], label='orbit')
+
+ax.plot([0], [0], [0], 'o', label='Earth', color='green', markersize=Tierra.radius/1000)
 
 
+ax.set_xlabel('X [km]')
+
+ax.set_ylabel('Y [km]')
+
+ax.set_zlabel('Z [km]')
+
+ax.legend()
+
+plt.show()
+
+##################################################33
 t0 = 0
 t = 3600
 
