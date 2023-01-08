@@ -13,5 +13,5 @@ Tierra. Para su elaboración se utilizará Python y/o Matlab.
 
 ## Funcionalidades
 
-![plot](docs/imgages/orbit.png)
+![plot](docs/imgages/orbitas.png)
 ![plot](docs/imgages/Lambert.png)
