@@ -179,15 +179,5 @@ class Utilities:
 
         return v2
 
-    def rotation_matrix_1(self, angle):
-        '''Rotation matrix around the x axis'''
-        return np.array([[1, 0, 0], [0, np.cos(angle), -np.sin(angle)], [0, np.sin(angle), np.cos(angle)]])
 
-    def rotation_matrix_2(self, angle):
-        '''Rotation matrix around the y axis'''
-        return np.array([[np.cos(angle), 0, np.sin(angle)], [0, 1, 0], [-np.sin(angle), 0, np.cos(angle)]])
-
-    def rotation_matrix_3(self, angle):
-        '''Rotation matrix around the z axis'''
-        return np.array([[np.cos(angle), -np.sin(angle), 0], [np.sin(angle), np.cos(angle), 0], [0, 0, 1]])
         
