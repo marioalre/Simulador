@@ -4,6 +4,7 @@ class Utilities:
     def __init__(self, body=None):
         if body is not None:
             self.mu = body.mu
+            self.radius = body.radius
         else:
             self.mu = 398600.4418 # km^3/s^2
 
@@ -245,3 +246,85 @@ class Utilities:
             x = x + 360 * np.ceil(np.abs(x) / 360)
         
         return x
+
+    def rv_from_observation(self, rho, drho, A, dA, a, da, theta, phi, H):
+        '''This function calculates the position and velocity vectors from the observation of a satellite.
+        Parameters
+        ----------
+        rho : float
+            Range in km
+        drho : float
+            Range rate in km/s
+        A : float
+            Azimuth in degrees
+        dA : float
+            Azimuth rate in degrees/s
+        a : float
+            Elevation in degrees
+        da : float
+            Elevation rate in degrees/s
+        theta : float
+            Local sideral time in degrees
+        phi : float
+            Latitude in degrees
+        H : float
+            Height in km
+        Returns
+        ----------
+        R : numpy array
+            Position vector in km
+        V : numpy array
+            Velocity vector in km/s
+        '''
+
+        deg2rad = np.pi / 180
+        w = 7.292115e-5
+        f = 1 / 298.257223563 # WGS84 flattening
+        omega = np.array([0, 0, w])
+
+        # Convert to radians
+        A = A * deg2rad
+        dA = dA * deg2rad
+        a = a * deg2rad
+        da = da * deg2rad
+        phi = phi * deg2rad
+        theta = theta * deg2rad
+
+        # Calculate the position vector
+        R = (self.radius/np.sqrt(1 - (2 * f - f**2)*np.sin(phi)**2) + H) * np.array([np.cos(phi) * np.cos(theta), np.cos(phi) * np.sin(theta), 0]) + (self.radius*(1-f)**2/np.sqrt(1 - (2 * f - f**2)*np.sin(phi)**2) + H)* np.array([0, 0, np.sin(phi)])
+
+        # Calculate the topocentric declination
+        delta = np.arcsin(np.sin(phi) * np.sin(a) + np.cos(phi) * np.cos(a) * np.cos(A))
+
+        # topocentric right ascension
+        if 0 < A < 2*np.pi:
+            h = 2*np.pi -  np.arccos((np.sin(a) * np.cos(phi) - np.sin(phi) * np.cos(a) * np.cos(A)) / (np.cos(delta)))
+        elif 180 <= A <= 360 or A == 0:
+            h = np.arccos((np.sin(a) * np.cos(phi) - np.sin(phi) * np.cos(a) * np.cos(A)) / (np.cos(delta)))
+        else:
+            Warning('The azimuth angle is not in the range [0, 360)')
+
+        alpha = theta - h
+
+        # direction cosine unit vector
+        u = np.array([np.cos(delta) * np.cos(alpha), np.cos(delta) * np.sin(alpha), np.sin(delta)])
+
+        # goecentric position vector
+        r = R + rho * u
+
+        # inertial velocity vector
+        dR = np.cross(omega, R)
+
+        # declination rate
+        ddelta = (-np.cos(a) * np.sin(A) * np.cos(phi) * dA - np.cos(phi) * np.sin(a) * np.cos(A) * da + np.sin(phi) * np.cos(a) * da) / (np.cos(delta))
+
+        # Right ascension rate
+        dalpha = w + (np.cos(a) * np.cos(A) * dA - np.sin(a) * np.sin(A) * da + np.sin(A) * np.cos(a)* np.tan(delta) * ddelta) / (np.cos(phi) * np.sin(a) - np.sin(phi) * np.cos(a) * np.cos(A))
+
+        # direction cosine rate vector
+        du = np.array([-np.sin(alpha) * np.cos(delta) * dalpha - np.cos(alpha) * np.sin(delta) * ddelta, -np.sin(delta) * np.sin(alpha) * ddelta + np.cos(delta) * np.cos(alpha) * dalpha, np.cos(delta) * ddelta])
+
+        # geocentric velocity vector
+        v = dR + drho * u + rho * du
+
+        return r, v
