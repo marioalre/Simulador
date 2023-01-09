@@ -69,7 +69,7 @@ print('Argument of periapsis: {} deg'.format(np.rad2deg(orbit.omega)))
 print('True anomaly: {} deg'.format(np.rad2deg(orbit.nu)))
 
 
-'''
+
 from src.utilities import Utilities
 
 print('--------------------------------------------------')
@@ -79,7 +79,7 @@ util = Utilities()
 times = util.findTOF(r0 ,r[-1, :], orbit.a)
 
 print('Time of flight: {} s'.format(times))
-'''
+
 from src.utilities import Utilities
 
 print('--------------------------------------------------')

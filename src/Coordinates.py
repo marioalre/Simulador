@@ -1,4 +1,8 @@
 import numpy as np
+import folium
+from IPython.display import display
+
+
 
 def rotation_matrix_1(angle):
     '''Rotation matrix around the x axis'''
@@ -54,6 +58,7 @@ def cart2efix(r, v, t, dt, t0):
 
 def efix2cart():
     ''' Earth fixed coordinate system to Space fixed coordinate system'''
+    pass
 
 def sid2rad(second):
     ''' Sidereal time to radians'''
@@ -68,3 +73,74 @@ def rad2sid(radians):
     hour = radians * 180 / np.pi / 15
 
     return hour
+
+def ecef2latlong(r):
+    ''' ECEF to latitude and longitude
+    Algorithm 12 from Vallado
+
+    Parameters
+    ----------
+    r : array_like
+        Position vector in km ECEF
+    Returns
+    -------
+    lat : float
+        Latitude in radians
+    lon : float 
+        Longitude in radians
+    '''
+
+    lon = np.arctan2(r[:,1], r[:, 0])
+    lon  *= 180 / np.pi 
+    lat = np.arctan2(r[:, 2], np.sqrt(r[:, 0]**2 + r[:, 1]**2))
+    lat *= 180 / np.pi
+
+    # Check quadrant
+    # Between -180 and 180
+    
+    for i in range(len(lon)):
+        if lon[i] < -180:
+            lon[i] += 360
+        elif lon[i] > 180:
+            lon[i] -= 360
+
+        if lat[i] < -90:
+            lat[i] += 180
+        elif lat[i] > 90:
+            lat[i] -= 180
+
+    return lat, lon
+
+def plot_ground_track(lat = None, long = None):
+    ''' Plot ground track
+    Parameters
+    ----------
+    lat : array_like
+        Latitude in degrees
+    long : array_like
+        Longitude in degrees
+    Returns
+    -------
+    map : folium map
+        Folium map object
+    '''
+
+    # Crea un mapa centrado en las coordenadas (25, 35)
+    m = folium.Map(location=[0, 0], zoom_start=2, tiles='Stamen Terrain')
+
+    # Dibuja la trayectoria del satélite en el mapa
+    folium.PolyLine(
+        locations=list(zip(lat, long)),
+        color='red',
+        weight=2,
+        opacity=1
+    ).add_to(m)
+
+    # Guarda el mapa en un archivo HTML
+    m.save('results/satellite_track.html')
+    display(m)
+
+    return m
+
+
+    

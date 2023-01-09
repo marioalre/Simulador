@@ -34,7 +34,7 @@ v02 = orb.velocity_eci()
 # Propagate the orbit
 
 tf = 3600*24 # s
-dt = 360 # s
+dt = 60 # s
 
 r, v = Orbita.propagate(r0 = r0, v0 = v0, tf = tf, dt = dt)
 r1, v1 = Orbita.propagate(r0 = r01, v0 = v01, tf = tf, dt = dt)
@@ -71,6 +71,15 @@ plt.show()
 r, v = co.cart2efix(r, v, tf, dt, 12720)
 r1, v1 = co.cart2efix(r1, v1, tf, dt, 12720)
 r2, v2 = co.cart2efix(r2, v2, tf, dt, 12720)
+
+##################################################
+lat, long = co.ecef2latlong(r)
+lat1, long1 = co.ecef2latlong(r1)
+lat2, long2 = co.ecef2latlong(r2)
+
+##################################################
+m = co.plot_ground_track(lat, long)
+
 
 plt.style.use('classic')
 # plt.rcParams['grid.color'] = "black"

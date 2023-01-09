@@ -66,7 +66,7 @@ class Utilities:
             # Hyperbolic
             cosdh = 1 + r0 / a * (f - 1)
 
-            TOF = g + np.sqrt(-a**3 / self.mu) * (np.sinh(np.arccosh(cosdh)) - np.arccosh(cosdh))
+            TOF = g + np.sqrt((-a)**3 / self.mu) * (np.sinh(np.arccosh(cosdh)) - np.arccosh(cosdh))
 
         return TOF
 
