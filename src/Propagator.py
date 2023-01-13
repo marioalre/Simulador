@@ -1,5 +1,6 @@
 import numpy as np
 from src.Orbit import Orbit 
+import perturbations as pert
 
 class Propagator(Orbit):
     '''Class for perturbations propagation and computation''' 
@@ -40,29 +41,44 @@ class Propagator(Orbit):
         t = t0
 
         while t < tf:
-            R_osc, V_osc = self.r0v02rv(Rp, Vp, dt)
+            R_osc, V_osc = self.r0v02rv(Rp, Vp, t-t0)
 
             r_osc = np.linalg.norm(R_osc)
             v_osc = np.linalg.norm(V_osc)
             
-            # Compute the perturbation
-            epsilon = 1
-            pass
+            dr = R_osc - Rp # Vector perturbation of position
+            dv = V_osc - Vp # Vector perturbation of velocity
 
-    def a_third_body(self, body):
-        '''Compute the perturbation due to a third body
-        Parameters
-        ----------
-        body : Body
-            Third body
-        Returns
-        -------
-        dr : ndarray
-            Perturbation in position vector
-        dv : ndarray
-            Perturbation in velocity vector
-        '''
+            # Compute the perturbation
+            epsilon = R_osc * dr / r_osc**2
+
+            f = 1/epsilon * (1 - 1/(1-2*epsilon)**(3/2))
+
+            ad = self.acceleration_perturbation()
+
+            d2dr = ad + self.mu / r_osc**3 * (f/epsilon*Rp - dr)
+
+            if (np.linalg.norm(dr)/np.linalg.norm(Rp)) > 0.01:
+                R_osc = Rp
+                V_osc = Vp
+            else:
+                R_osc = Rp + dr
+                V_osc = Vp + dv
+                t += dt
+            
+    def acceleration_perturbation(self):
         pass
 
+    def acc_third_body(self, body_3rd):
+        '''Compute the acceleration due to a third body
+        Parameters
+        ----------
+        body_3rd : CelestialBody
+            Third body
+        Returns
+        ------- 
+        acc : ndarray
+            Acceleration due to third body'''
 
+        pass
 

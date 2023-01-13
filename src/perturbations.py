@@ -82,10 +82,8 @@ def third_body(body, r, m):
     dr : ndarray
         Perturbation in km
     '''
-    # Compute the perturbation
-    acc = - body.mu * r / np.linalg.norm(r)**3
+    pass
 
-    return acc
 
 def solar_pressure(body, r, C_S, A, m):
     '''Compute the perturbation due to the solar pressure
