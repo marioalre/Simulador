@@ -42,7 +42,7 @@ r2, v2 = Orbita.propagate(r0 = r02, v0 = v02, tf = tf, dt = dt)
 
 ##################################################
 
-plt.style.use('classic')
+
 # plt.rcParams['grid.color'] = "black"
 
 fig = plt.figure()
@@ -80,8 +80,6 @@ lat2, long2 = co.ecef2latlong(r2)
 ##################################################
 m = co.plot_ground_track(lat, long)
 
-
-plt.style.use('classic')
 # plt.rcParams['grid.color'] = "black"
 
 fig1 = plt.figure()
@@ -102,7 +100,7 @@ ax1.set_ylabel('x10e3 Y [km]')
 ax1.set_zlabel('x10e3 Z [km]')
 ax1.set_title('Órbitas Keplerianas')
 
-ax1.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
+ax1.legend(bbox_to_anchor=(1, 1), loc='upper left', borderaxespad=0.)
 
 plt.show()
 ##################################################

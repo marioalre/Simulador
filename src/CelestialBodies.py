@@ -19,7 +19,7 @@ class CelestialBodies(Orbit):
 
 	def sun(self):
 		'''Sun parameters'''
-		self.mu = 1.32712440018e20 # km^3/s^2
+		self.mu = 13271244001.800001 # km^3/s^2
 		self.radius = 695700   # km
 
 	def mars(self):
@@ -74,6 +74,11 @@ class CelestialBodies(Orbit):
 		self.mu = 324858      # km^3/s^2
 		self.radius = 6051.8  # km
 		self.J2 = 4.458e-6	  # Venus J2
+
+	def personal(self, mu, radius):
+		'''Personal parameters'''
+		self.mu = mu
+		self.radius = radius
 
 
 	
