@@ -280,12 +280,14 @@ class Orbit():
         f, g = self.lagrange_coeff(chi, dt, r0n, alpha)
 
         r = f * r0 + g * v0
+        # r = np.dot(f , r0) + np.dot(g , v0)
 
         rn = np.linalg.norm(np.array(r))
 
         df, dg = self.d_lagrange_coeff(chi, rn, r0n, alpha)
 
         v = df * r0 + dg * v0
+        # v = np.dot(df , r0) + np.dot(dg , v0)
 
         return r, v
 
