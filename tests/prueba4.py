@@ -34,10 +34,10 @@ v02 = orb.velocity_eci()
 # Propagate the orbit
 
 tf = 3600*24 # s
-dt = 60 # s
+dt = 60*4 # s
 
 r, v = Orbita.propagate(r0 = r0, v0 = v0, tf = tf, dt = dt)
-r1, v1 = Orbita.propagate(r0 = r01, v0 = v01, tf = tf, dt = dt)
+r1, v1 = Orbita.propagate(r0 = r01, v0 = v01, tf = tf, dt = dt*2)
 r2, v2 = Orbita.propagate(r0 = r02, v0 = v02, tf = tf, dt = dt)
 
 ##################################################
@@ -69,7 +69,7 @@ plt.show()
 ##################################################
 
 r, v = co.cart2efix(r, v, tf, dt, 12720)
-r1, v1 = co.cart2efix(r1, v1, tf, dt, 12720)
+r1, v1 = co.cart2efix(r1, v1, tf, dt*2, 12720)
 r2, v2 = co.cart2efix(r2, v2, tf, dt, 12720)
 
 ##################################################
@@ -79,6 +79,11 @@ lat2, long2 = co.ecef2latlong(r2)
 
 ##################################################
 m = co.plot_ground_track(lat, long)
+m = co.plot_ground_track(lat1, long1, m)
+m = co.plot_ground_track(lat2, long2, m)
+
+# Guarda el mapa en un archivo HTML
+m.save('results/satellite_track.html')
 
 # plt.rcParams['grid.color'] = "black"
 

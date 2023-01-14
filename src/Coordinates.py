@@ -1,8 +1,5 @@
 import numpy as np
 import folium
-from IPython.display import display
-
-
 
 def rotation_matrix_1(angle):
     '''Rotation matrix around the x axis'''
@@ -111,7 +108,7 @@ def ecef2latlong(r):
 
     return lat, lon
 
-def plot_ground_track(lat = None, long = None):
+def plot_ground_track(lat = None, long = None, map = None):
     ''' Plot ground track
     Parameters
     ----------
@@ -124,23 +121,26 @@ def plot_ground_track(lat = None, long = None):
     map : folium map
         Folium map object
     '''
-
-    # Crea un mapa centrado en las coordenadas (25, 35)
-    m = folium.Map(location=[0, 0], zoom_start=2, tiles='Stamen Terrain')
+    if map is None:
+        # Crea un mapa centrado en las coordenadas (25, 35)
+        map = folium.Map(location=[0, 0], zoom_start=2.4, min_zoom=2.4 , tiles='Stamen Terrain')
 
     # Dibuja la trayectoria del satélite en el mapa
+    '''
     folium.PolyLine(
         locations=list(zip(lat, long)),
         color='red',
         weight=2,
         opacity=1
-    ).add_to(m)
+    ).add_to(m)'''
 
-    # Guarda el mapa en un archivo HTML
-    m.save('results/satellite_track.html')
-    display(m)
+    colors = ['red', 'blue', 'green', 'purple', 'orange', 'darkred', 'lightred', 'beige', 'darkblue', 'darkgreen', 'cadetblue', 'darkpurple', 'white', 'pink', 'lightblue', 'lightgreen', 'gray', 'black', 'lightgray']
+    # Random colors
+    color = np.random.choice(colors)
+    for latlong in zip(lat, long):
+        folium.CircleMarker(location=latlong, radius=0.6, color=color).add_to(map)
 
-    return m
+    return map
 
 
     
