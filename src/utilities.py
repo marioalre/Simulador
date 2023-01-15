@@ -252,6 +252,10 @@ class Utilities:
         
         return x
 
+##############################################################################################################
+#  OBSERVATION FUNCTIONS to calculate the position and velocity vectors from the observation of a satellite  #
+##############################################################################################################
+
     def rv_from_observation(self, rho, drho, A, dA, a, da, theta, phi, H):
         '''This function calculates the position and velocity vectors from the observation of a satellite.
         Parameters
@@ -334,6 +338,9 @@ class Utilities:
 
         return r, v
 
+###############################################################################################################333
+# Gauss' method with iterative improvement
+###############################################################################################################333
     def Gauss_POD(self, q1, q2, q3, R1, R2, R3, t1, t2, t3):
         '''This function calculates the position and velocity vectors from the observation of a satellite.
         Gauss' method is used to calculate the position and velocity vectors.
@@ -472,6 +479,7 @@ class Utilities:
         print(f'Eccentricity: {orb.ecc}')
         print(f'Argument of perigee: {orb.omega * deg} deg')
         print(f'Semi-major axis: {orb.a} km')
+        print(f'true anomaly: {orb.nu * deg} deg')
 
         return orb
 
@@ -555,20 +563,47 @@ class Utilities:
 
         return self.r2, self.v2
 
+    def r_with_ralst(self, phi, theta, f, H):
+        '''This function calculates the position vector of the satellite in the ECI frame.
+        
+        Parameters
+        ----------
+        phi : float
+            Right ascension in degrees.
+        theta : float
+            Local sidereal time of the satellite in degrees.
+        f : float
+            Flattening of the Earth.
+        H : float
+            Height of the satellite above the Earth's surface in km.
+        '''
+        # Convert to radians
+        phi = phi * np.pi / 180
+        theta = theta * np.pi / 180
+        
+        R = (self.radius/np.sqrt(1 - (2 * f - f**2)*np.sin(phi)**2) + H) * np.array([np.cos(phi) * np.cos(theta), np.cos(phi) * np.sin(theta), 0]) + (self.radius*(1-f)**2/np.sqrt(1 - (2 * f - f**2)*np.sin(phi)**2) + H)* np.array([0, 0, np.sin(phi)])
+
+        return R
+
+    def q_with_rade(self, alpha, delta):
+        '''This function calculates the position vector of the satellite in the ECI frame.
+        
+        Parameters
+        ----------
+        alpha : float
+            Latitude of the satellite in degrees.
+        delta : float
+            declination of the satellite in degrees.
+        '''
+        # Convert to radians
+        alpha = alpha * np.pi / 180
+        delta = delta * np.pi / 180
+
+        Q = np.array([np.cos(alpha) * np.cos(delta), np.sin(alpha) * np.cos(delta), np.sin(delta)])
+        
+        return Q
 
 if __name__ == '__main__':
-
-    r1 = np.array([3489.8, 3430.2, 4078.5])
-    r2 = np.array([3460.1, 3460.1, 4078.5])
-    r3 = np.array([3429.9, 3490.1, 4078.5])
-
-    q1 = np.array([0.71643, 0.68074, -0.15270])
-    q2 = np.array([0.56897, 0.79531, -0.20917])
-    q3 = np.array([0.41841, 0.87007, -0.26059])
-
-    t1 = 0
-    t2 = 118.10
-    t3 = 237.58
 
     from CelestialBodies import CelestialBodies
 
@@ -576,7 +611,25 @@ if __name__ == '__main__':
     Tierra.earth()
 
     util = Utilities(Tierra)
-    r, v = util.Gauss_POD(q1, q2, q3, r1, r2, r3, t1, t2, t3)
+
+    alpha = np.array([43.537, 54.420, 64.318])
+    delta = np.array([-8.7833, -12.074, -15.105])
+    lst = np.array([44.506, 45.000,  45.499])
+
+    q = np.zeros((3, 3))
+    r = np.zeros((3, 3))
+
+    for i in range(len(alpha)):
+        q[i] = util.q_with_rade(alpha[i], delta[i])
+        r[i] = util.r_with_ralst(40, lst[i], Tierra.f, 1)
+    print(f'q{i}: {q} \nr{i}: {r}')
+
+
+    t1 = 0
+    t2 = 118.10
+    t3 = 237.58
+
+    r, v = util.Gauss_POD(q[0], q[1], q[2], r[0], r[1], r[2], t1, t2, t3)
     print('The position vector is: ', r)
     print('The velocity vector is: ', v)
 

@@ -16,6 +16,7 @@ class CelestialBodies(Orbit):
 		self.mu = 398600.4418  # km^3/s^2
 		self.radius = 6378.137 # km
 		self.J2 = 1.08262668e-3 # Earth J2
+		self.f = 1/298.257223563 # Earth flattening
 
 	def sun(self):
 		'''Sun parameters'''
