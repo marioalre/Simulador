@@ -1,4 +1,4 @@
-# Simulador para an ́alisis y estudio de misiones espaciales
+# Simulador para análisis y estudio de misiones espaciales
 Proyecto TFG 
 
 ### Convocatoria 
