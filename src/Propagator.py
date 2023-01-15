@@ -3,6 +3,7 @@ from src.Orbit import Orbit
 from src.orb2rv import Orb2rv
 import matplotlib.pyplot as plt
 from src.CelestialBodies import CelestialBodies
+from scipy.integrate import solve_ivp
 
 
 class Propagator(Orbit):
@@ -169,7 +170,46 @@ class Propagator(Orbit):
         ax.legend()
 
         plt.show()
+    
+    def cowell(self, t):
+        '''Cowell method to propagate the orbit from poliastro'''
 
+        # Initial conditions
+        x, y, z = self.R0
+        vx, vy, vz = self.V0
+
+        u0 = np.array([x, y, z, vx, vy, vz])
+
+        # Propagation with scipy solve_ivp
+        sol = solve_ivp(self.func_twobody, (0, t), args=(k,) u0, method='RK45', rtol=1e-8, atol=1e-8, dense_output=True)
+
+        rrs = []
+        vvs = []
+        for i in range(len(t)):
+            tt = t[i]
+            y = sol.sol(tt)
+            rrs.append(y[:3])
+            vvs.append(y[3:])
+
+        return rrs, vvs
+
+    def func_twobody(self, t0, u_, k):
+        """Differential equation for the initial value two body problem.
+        From Poliastro
+        Parameters
+        ----------
+        t0 : float
+            Time.
+        u_ : numpy.ndarray
+            Six component state vector [x, y, z, vx, vy, vz] (km, km/s).
+        k : float
+            Standard gravitational parameter.
+        """
+        x, y, z, vx, vy, vz = u_
+        r3 = (x**2 + y**2 + z**2) ** 1.5
+
+        du = np.array([vx, vy, vz, -k * x / r3, -k * y / r3, -k * z / r3])
+        return du
 
 if __name__ == "__main__":
     # Bodies
