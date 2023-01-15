@@ -356,7 +356,6 @@ class Orbit():
         plt.show()
         '''
 
-
         return r, v
 
 

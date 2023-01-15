@@ -1,12 +1,17 @@
 import numpy as np
+from src.Orbit import Orbit
+from src.rv2orb import Rv2orb
 
 class Utilities:
     def __init__(self, body=None):
         if body is not None:
             self.mu = body.mu
             self.radius = body.radius
+            self.central_body = body
         else:
             self.mu = 398600.4418 # km^3/s^2
+            self.radius = 6378.1363 # km
+            print('Warning: No body selected. Using Earth as default.')
 
     def findTOF(self, R0, R1, p):
         '''
@@ -328,3 +333,258 @@ class Utilities:
         v = dR + drho * u + rho * du
 
         return r, v
+
+    def Gauss_POD(self, q1, q2, q3, R1, R2, R3, t1, t2, t3):
+        '''This function calculates the position and velocity vectors from the observation of a satellite.
+        Gauss' method is used to calculate the position and velocity vectors.
+        Parameters
+        ----------
+        q1 : numpy array
+            Position vector in km (satellite from earth surface)
+        q2 : numpy array
+            Position vector in km (satellite from earth surface)
+        q3 : numpy array
+            Position vector in km (satellite from earth surface)
+        R1 : numpy array
+            Position vector in km (observer)
+        R2 : numpy array
+            Position vector in km (observer)
+        R3 : numpy array
+            Position vector in km (observer)
+        t1 : float
+            Time in seconds first observation
+        t2 : float
+            Time in seconds second observation
+        t3 : float
+            Time in seconds third observation
+        Returns
+        ----------
+        R : numpy array
+            Position vector in km
+        V : numpy array
+            Velocity vector in km/s
+        '''
+        self.q1 = q1
+        self.q2 = q2
+        self.q3 = q3
+        self.R1 = R1
+        self.R2 = R2
+        self.R3 = R3
+        self.t1 = t1
+        self.t2 = t2
+        self.t3 = t3
+
+        # time differences
+        self.tau1 = t1 - t2
+        self.tau3 = t3 - t2
+        self.tau = self.tau3 - self.tau1
+
+        # cross products
+        p1 = np.cross(q2, q3)
+        p2 = np.cross(q1, q3)
+        p3 = np.cross(q1, q2)
+
+        D0 = np.dot(q1, p1)
+        self.D0 = D0
+
+        D11 = np.dot(R1, p1)
+        D21 = np.dot(R2, p1)
+        D31 = np.dot(R3, p1)
+        self.D11 = D11
+        self.D21 = D21
+        self.D31 = D31
+
+        D12 = np.dot(R1, p2)
+        D22 = np.dot(R2, p2)
+        D32 = np.dot(R3, p2)
+        self.D12 = D12
+        self.D22 = D22
+        self.D32 = D32
+
+        D13 = np.dot(R1, p3)
+        D23 = np.dot(R2, p3)
+        D33 = np.dot(R3, p3)
+        self.D13 = D13
+        self.D23 = D23
+        self.D33 = D33
+
+        A = 1/D0 * (-D12*(self.tau3/self.tau) + D22 + D32 * (self.tau1/self.tau))
+        B = 1/(D0 * 6) * (D12 * (self.tau3**2 - self.tau**2)*(self.tau3/self.tau) + D32 * (self.tau**2 - self.tau1**2)*(self.tau1/self.tau))
+
+        E = np.dot(R2, q2)
+        r22 = np.dot(R2, R2)
+
+        a = -(A**2 + 2* A * E + r22)
+        b = -2 * B * (A + E) * self.mu
+        c = -B**2 * self.mu**2
+
+        roots = np.roots([1, 0, a, 0, 0, b, 0, 0, c])
+
+        for root in roots:
+            if np.isreal(root) and root > 0:
+                r = root.real
+                print(f'Radius: {r} km')
+                if r < self.radius:
+                    Warning('The radius is smaller than the radius of the earth')
+                break
+        
+        Q2 = A + (self.mu * B) / r**3
+        self.Q2 = Q2
+
+        num = 6 *(D31 * self.tau1/self.tau3 + D21 * self.tau/self.tau3) * r**3 + self.mu * D31 * (self.tau**2 - self.tau1**2) * self.tau1/self.tau3
+        den = 6*r**3 + self.mu *(self.tau**2 - self.tau3**2)
+        Q1 = 1/D0 * ((num)/(den) - D11)
+        self.Q1 = Q1
+
+        num1 = 6 *(D13 * self.tau3/self.tau1 - D23 * self.tau/self.tau1) * r**3 + self.mu * D13 * (self.tau**2 - self.tau3**2) * self.tau3/self.tau1
+        Q3 = 1/D0 * ((num1)/(den) - D33)
+        self.Q3 = Q3
+
+        # position vectors
+        r1 = R1 + Q1 * q1
+        r2 = R2 + Q2 * q2
+        r3 = R3 + Q3 * q3
+
+        # velocity vectors
+        self.f1 = 1 - 0.5*self.mu * (self.tau1**2) / r**3
+        self.g1 = self.tau1 - (1/6) * self.mu * self.tau1**3 / r**3
+
+        self.f3 = 1 - 0.5*self.mu * (self.tau3**2) / r**3
+        self.g3 = self.tau3 - (1/6) * self.mu * self.tau3**3 / r**3
+
+        v2 = (-self.f3 * r1 + self.f1 * r3) / (self.g3 * self.f1 - self.g1 * self.f3)
+
+        print('Now you can use the function "rv2coe" to calculate the orbital elements.')
+
+        self.r2 = r2
+        self.v2 = v2
+
+        return r2, v2
+
+    def rv2coe(self):
+        '''This function calculates the orbital elements from the position and velocity vectors.'''
+        orb = Rv2orb(self.r2, self.v2, self.central_body, 0, 0)
+        deg = 180 / np.pi
+        # Print the orbital elements
+        print(f'Orbital elements of the satellite:')
+        print(f'Inclination: {orb.i * deg} deg')
+        print(f'Right ascension of the ascending node: {orb.Omega* deg} deg')
+        print(f'Eccentricity: {orb.ecc}')
+        print(f'Argument of perigee: {orb.omega * deg} deg')
+        print(f'Semi-major axis: {orb.a} km')
+
+        return orb
+
+    def iterative(self):
+        '''Using the Gauss method to calculate the position and velocity vectors by iterating over the observations.
+        '''
+
+        r, v = self.Gauss_POD(self.q1, self.q2, self.q3, self.R1, self.R2, self.R3, self.t1, self.t2, self.t3)
+
+        diff1 = 1
+        diff2 = 1
+        diff3 = 1
+
+        tol = 1e-9
+
+        Q1_old = self.Q1
+        Q2_old = self.Q2
+        Q3_old = self.Q3 
+
+        nmax = 1000
+        n = 0
+
+        while (diff1 > tol and diff2 > tol and diff3 > tol) and n < nmax:
+            
+            n += 1
+
+            r_n = np.linalg.norm(r)
+            v_n = np.linalg.norm(v)
+
+            alpha = 2/r_n - v_n**2/self.mu
+
+            vr2 = np.dot(v, r) / r_n
+
+            prop = Orbit(self.central_body)
+
+            chi1 = prop.Kepler_universal(r_n, vr2, self.tau1, alpha)
+            chi3 = prop.Kepler_universal(r_n, vr2, self.tau3, alpha)
+
+            # Lagrange coefficients
+            ff1, gg1 = prop.lagrange_coeff(chi1, self.tau1, r_n, alpha)
+            ff3, gg3 = prop.lagrange_coeff(chi3, self.tau3, r_n, alpha)
+
+            # Update f and g
+            self.f1 = (ff1 + self.f1) / 2
+            self.g1 = (gg1 + self.g1) / 2
+            self.f3 = (ff3 + self.f3) / 2
+            self.g3 = (gg3 + self.g3) / 2
+
+            c1 = self.g3 / (self.f1 * self.g3 - self.f3 * self.g1)
+            c3 = -self.g1 / (self.f1 * self.g3 - self.f3 * self.g1)
+
+            self.Q1 = 1/self.D0 * (-self.D11 + 1/c1 * self.D21 - c3/c1 * self.D31)
+            self.Q2 = 1/self.D0 * (-c1 * self.D12 + self.D22 - c3 * self.D32)
+            self.Q3 = 1/self.D0 * (-c1/c3 * self.D13 + 1/c3*self.D23 - self.D33)
+
+            self.r1 = self.R1 + self.Q1 * self.q1
+            self.r2 = self.R2 + self.Q2 * self.q2
+            self.r3 = self.R3 + self.Q3 * self.q3
+
+            self.v2 = (-self.f3 * self.r1 + self.f1 * self.r3) / (self.g3 * self.f1 - self.g1 * self.f3)
+
+            # difference between old and new values
+            diff1 = np.linalg.norm(self.Q1 - Q1_old)
+            diff2 = np.linalg.norm(self.Q2 - Q2_old)
+            diff3 = np.linalg.norm(self.Q3 - Q3_old)
+
+            # Update old values
+            Q1_old = self.Q1
+            Q2_old = self.Q2
+            Q3_old = self.Q3
+
+            # print iiterations and values 
+            print('Iteration: ', n)
+            print(f'Q1: {self.Q1}   Q2: {self.Q2}   Q3: {self.Q3}')
+            print(f'f1: {self.f1}   g1: {self.g1}   f3: {self.f3}   g3: {self.g3}')
+            print(f'chi1: {chi1}   chi3: {chi3}')
+
+
+        # Display de number of iterations
+        print('The number of iterations is: ', n)
+
+        return self.r2, self.v2
+
+
+if __name__ == '__main__':
+
+    r1 = np.array([3489.8, 3430.2, 4078.5])
+    r2 = np.array([3460.1, 3460.1, 4078.5])
+    r3 = np.array([3429.9, 3490.1, 4078.5])
+
+    q1 = np.array([0.71643, 0.68074, -0.15270])
+    q2 = np.array([0.56897, 0.79531, -0.20917])
+    q3 = np.array([0.41841, 0.87007, -0.26059])
+
+    t1 = 0
+    t2 = 118.10
+    t3 = 237.58
+
+    from CelestialBodies import CelestialBodies
+
+    Tierra = CelestialBodies()
+    Tierra.earth()
+
+    util = Utilities(Tierra)
+    r, v = util.Gauss_POD(q1, q2, q3, r1, r2, r3, t1, t2, t3)
+    print('The position vector is: ', r)
+    print('The velocity vector is: ', v)
+
+
+    r, v = util.iterative()
+    print('The position vector is: ', r)
+    print('The velocity vector is: ', v)
+
+    orb = util.rv2coe()
+        
+

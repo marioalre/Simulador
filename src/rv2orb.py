@@ -25,7 +25,8 @@ class Rv2orb(Orbit):
         self.mu = body.mu
         self.h = np.cross(self.r, self.v)
         self.dt = t - t0
-        self.e = self.eccentricity()
+        self.e = self.eccentricity() # eccentricity vector
+        self.ecc = np.linalg.norm(self.e) # eccentricity
         self.a = self.semi_major_axis()
         self.i = self.inclination()
         self.Omega = self.ascending_node()
