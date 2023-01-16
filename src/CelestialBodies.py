@@ -19,7 +19,7 @@ class CelestialBodies():
 
 	def sun(self):
 		'''Sun parameters'''
-		self.mu = 13271244001.800001 # km^3/s^2
+		self.mu = 132712440018.00001 # km^3/s^2
 		self.radius = 695700   # km
 
 	def mars(self):

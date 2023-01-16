@@ -50,18 +50,18 @@ class Interplanetary:
         i = elements[2]
         
         Omega = zero2360(elements[3])
-        omega = zero2360(elements[4])
+        w_hat = zero2360(elements[4])
         L = zero2360(elements[5]) # mean longitude
 
-        w = zero2360(omega - Omega) # argument of latitude
-        M = zero2360(L - omega)
+        omega = zero2360(w_hat - Omega) # argument of latitude
+        M = zero2360(L - w_hat)
 
         orb = Orbit(self.central_body)
         E = orb.kepler_elliptic(M*deg, e)
 
         TA = zero2360(2*np.arctan(np.sqrt((1 + e)/(1 - e))*np.tan(E/2))/deg)
 
-        coe = np.array([h, e, Omega, i, w, TA, a, omega, L, M, E/deg])
+        coe = np.array([h, e, Omega, i, omega, TA, a, w_hat, L, M, E/deg])
 
         orb = Orb2rv(a = a, e = e, i = i, Omega = Omega, M=M, omega=omega , body=self.central_body)
 
@@ -109,18 +109,14 @@ class Interplanetary:
                               [-0.00125196, 0.00002514, -3.64, -151.25, -844.43, 786449.21],
                               [-0.00076912, 0.00006465, 11.07, -37.33, -132.25, 522747.90]])
 
-        J2000_coe = J2000_elements[planet.planet_id]
-        cent_rates_coe = cent_rates[planet.planet_id]
+        J2000_coe = J2000_elements[planet.planet_id-1]
+        cent_rates_coe = cent_rates[planet.planet_id-1]
 
         # Convert from Au to km
         J2000_coe[0] = J2000_coe[0] * 149597870.700
         cent_rates_coe[0] = cent_rates_coe[0] * 149597870.700
 
         # Convert from arcsec to fraction of a degree
-        J2000_coe[2] = J2000_coe[2] / 3600
-        J2000_coe[3] = J2000_coe[3] / 3600
-        J2000_coe[4] = J2000_coe[4] / 3600
-        J2000_coe[5] = J2000_coe[5] / 3600
 
         cent_rates_coe[2] = cent_rates_coe[2] / 3600
         cent_rates_coe[3] = cent_rates_coe[3] / 3600
@@ -128,11 +124,6 @@ class Interplanetary:
         cent_rates_coe[5] = cent_rates_coe[5] / 3600
 
         return J2000_coe, cent_rates_coe
-        
-        
-
-        pass
-
         
 
 
