@@ -1,6 +1,4 @@
-from src.Orbit import Orbit
-
-class CelestialBodies(Orbit):
+class CelestialBodies():
 	'''Celestial bodies parameters'''
 	def __init__(self):
 		self.mu = 0
@@ -17,6 +15,7 @@ class CelestialBodies(Orbit):
 		self.radius = 6378.137 # km
 		self.J2 = 1.08262668e-3 # Earth J2
 		self.f = 1/298.257223563 # Earth flattening
+		self.planet_id = 3
 
 	def sun(self):
 		'''Sun parameters'''
@@ -28,35 +27,41 @@ class CelestialBodies(Orbit):
 		self.mu = 42828.3	   # km^3/s^2
 		self.radius = 3396.19  # km
 		self.J2 =  1.96045e-3	   # Mars J2
+		self.planet_id = 4
 
 	def jupiter(self):
 		'''Jupiter parameters'''
 		self.mu = 126712764.5 # km^3/s^2
 		self.radius = 71492   # km
 		self.J2 = 14.736e-3  # Jupiter J2
+		self.planet_id = 5
 
 	def saturn(self):
 		'''Saturn parameters'''
 		self.mu = 37931207.8  # km^3/s^2
 		self.radius = 60268   # km
 		self.J2 = 16.298e-3	   # Saturn J2
+		self.planet_id = 6
 
 	def uranus(self):
 		'''Uranus parameters'''
 		self.mu = 5793939.6   # km^3/s^2
 		self.radius = 25559   # km
 		self.J2 =  3.34343e-3		   # Uranus J2
+		self.planet_id = 7
 
 	def neptune(self):
 		'''Neptune parameters'''
 		self.mu = 6836527.4   # km^3/s^2
 		self.radius = 24764   # km
 		self.J2 =   3.411e-3		   # Neptune J2
+		self.planet_id = 8
 
 	def pluto(self):
 		'''Pluto parameters'''
 		self.mu = 977         # km^3/s^2
 		self.radius = 1151    # km
+		self.planet_id = 9
 	
 	def moon(self):
 		'''Moon parameters'''
@@ -69,17 +74,20 @@ class CelestialBodies(Orbit):
 		self.mu = 22032		  # km^3/s^2
 		self.radius = 2439.7  # km
 		self.J2 = 60.0e-6	  # Mercury J2
+		self.planet_id = 1
 
 	def venus(self):
 		'''Venus parameters'''
 		self.mu = 324858      # km^3/s^2
 		self.radius = 6051.8  # km
 		self.J2 = 4.458e-6	  # Venus J2
+		self.planet_id = 2
 
 	def personal(self, mu, radius):
 		'''Personal parameters'''
 		self.mu = mu
 		self.radius = radius
+
 
 
 	
