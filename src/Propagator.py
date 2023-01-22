@@ -1,177 +1,191 @@
-import numpy as np
+# My libraries
 from src.Orbit import Orbit 
 from src.orb2rv import Orb2rv
-import matplotlib.pyplot as plt
+from src.perturbations import third_body, atmopheric_drag, solar_pressure
 from src.CelestialBodies import CelestialBodies
+from src.interplanetary import Interplanetary
+
+# Python libraries
+import numpy as np
+import matplotlib.pyplot as plt
 from scipy.integrate import solve_ivp
+
 
 
 class Propagator(Orbit):
     '''Class for perturbations propagation and computation''' 
 
-    def __init__(self, body, R0, V0, R3, V3):
+    def __init__(self, body):
+        '''Initialize the class with the central body and the initial conditions
+        Parameters
+        ----------
+        body : CelestialBody
+            Central body
+        R0 : ndarray
+            Initial position vector in km
+        V0 : ndarray
+            Initial velocity vector in km/s
+        '''
+
+        self.body = body
         self.mu = body.mu
         self.radius = body.radius
-        self.R0 = np.array(R0)
-        self.V0 = np.array(V0)
-        self.R3 = np.array(R3)
-        self.V3 = np.array(V3)
+
+
+    def perturbations(self, third_body_p=None, solar_pressure=None, drag=None):
+        '''Perturbations
+        Parameters
+        ----------
+        third_body_p : list
+            - R_tb : ndarray
+                Position vector of the third body
+            - V_tb : ndarray
+                Velocity vector of the third body
+            - body_tb : CelestialBody
+                Third body
+        solar_pressure : ndarray
+            - A : float
+                Reference area in m^2
+            - C_S : float
+                Solar pressure coefficient
+            - body : CelestialBody
+                Central body
+        drag : ndarray
+            - A : float
+                Reference area in m^2
+            - C_D : float
+                Drag coefficient
+            - body : CelestialBody
+                Central body
+        Returns
+        -------
+        ad : ndarray
+            Acceleration due to perturbations in km/s^2
+            '''
+
+        ad = 0
+        # Third body perturbation
+        if third_body_p is not None:
+            R_tb = third_body_p[0]
+            R_sc = third_body_p[1]  # spacecraft position
+            body_tb = third_body_p[2]
+
+            ad += third_body(R_tb, R_sc, body_tb)   
+        else:
+            ad += 0
+
+        if solar_pressure is not None:
+            ad += solar_pressure()
+        else:
+            ad += 0
+
+        # Drag perturbation
+        if drag is not None:
+            ad += atmopheric_drag()
+        else:
+            ad += 0
+
+        return ad
+
         
-    def Encke(self, t0, tf, dt, bodies, r):
+    def Encke(self, R0, V0, dt, trange, perturbations=None):
         '''Encke propagation method
         Parameters
         ----------
-        t0 : float
-            Initial time in seconds
-        tf : float
-            Final time in seconds
+        R0 : ndarray
+            Initial position vector in km
+        V0 : ndarray
+            Initial velocity vector in km/s
         dt : float
-            Time step in seconds
-        bodies : list
-            List of bodies to compute perturbations
-        r : list
-            List of position vectors in km of the bodies to compute perturbations
+            Time step in s
+        trange : list
+            Time range in s [t0, tf]
+        perturbations : list
+            [Third body, solar pressure and drag perturbations]
+            (See the perturbations function for more details)
+            If there are no perturbations, set perturbations = [Third body, None, None]
+            That means that the third body perturbation is computed, but the solar pressure
+            and drag perturbations are not
         Returns
         -------
-        r : ndarray
-            Position vector in km
-        v : ndarray
-            Velocity vector in km/s
+        rrs : list
+            List of position vectors in km
+        vvs : list
+            List of velocity vectors in km/s
         '''
+
+        # Compuete the perturbations
+        if perturbations is not None:
+            tb_params = perturbations[0]
+            sp_params = perturbations[1]
+            drag_params = perturbations[2]
+        else:
+            tb_params = None
+            sp_params = None
+            drag_params = None
+
         # Initial conditions
-        r0 = np.linalg.norm(self.R0)
-        v0 = np.linalg.norm(self.V0)
+        t0 = trange[0]
+        tf = trange[1]
 
-        dr = np.array([0, 0, 0])
-        epsilon = 0
-        f = 0
-        Rp = self.R0
-        Vp = self.V0
+        t=t0
+        R = R0
+        V = V0
 
-        t = t0 + dt
+        n = int((tf-t0)/dt)
+        Rs = np.zeros((n+2, 3))
+        Vs = np.zeros((n+2, 3))
+        Ts = np.zeros((n+2, 1))
 
-        # List of position and velocity vectors
-        N = int((tf - t0)/dt)
-        r_osc_l = self.R0
-        v_osc_l = self.V0
-        r_l = self.R0
-        v_l = self.V0
-        r3_l = self.R3
-        v3_l = self.V3
+        Rs[0, :] = R
+        Vs[0, :] = V
+        Ts[0] = t
 
+        # Third body perturbation
+        if tb_params is not None:
+            R3 = tb_params[0]
+            V3 = tb_params[1]
+            body3 = tb_params[2]
 
-        while t < tf:
-            R_osc, V_osc = self.r0v02rv(Rp, Vp, t-t0)
+        i = 0
+        while t <= tf:
+            alpha = np.zeros(3)
+            beta = np.zeros(3)
 
-            r_osc = np.linalg.norm(R_osc)
-            v_osc = np.linalg.norm(V_osc)
-            
-            dr = R_osc - Rp # Vector perturbation of position
-            dv = V_osc - Vp # Vector perturbation of velocity
+            orb = Orbit(self.body) 
 
-            # Compute the perturbation
-            epsilon = np.dot(R_osc, dr) / r_osc**2
+            Rb, Vb = orb.r0v02rv(R, V, dt)
 
-            f = 1/epsilon * (1 - 1/(1-2*epsilon)**(3/2))
-            if t == 24451200:
-                print(f)
+            rb = np.linalg.norm(Rb)
+            r = np.linalg.norm(R)
 
-            r3, v3 = self.r0v02rv(self.R3, self.V3, t-t0)
-            ad = self.acc_third_body(bodies, r)
+            # Third body position and velocity
+            R3, V3 = orb.r0v02rv(R3, V3, t)
 
-            d2dr = ad + self.mu / r_osc**3 * (f/epsilon*Rp - dr)
+            tb_params[0] = R3
+            tb_params[1] = R
 
-
-            r3_l = np.concatenate((r3_l, r3))
-            v3_l = np.concatenate((v3_l, v3))
-
-            r_l = np.concatenate((r_l, R_osc))
-            v_l = np.concatenate((v_l, V_osc))
-  
-            if (np.linalg.norm(dr)/np.linalg.norm(Rp)) > 0.01:
-                R_osc = Rp
-                V_osc = Vp
+            if perturbations is not None:
+                ad = self.perturbations(third_body_p=tb_params, solar_pressure=sp_params, drag=drag_params)
             else:
-                R_osc = Rp + dr
-                V_osc = Vp + dv
+                ad = 0
 
-            r_osc_l = np.concatenate((r_osc_l, R_osc))
-            v_osc_l = np.concatenate((v_osc_l, V_osc))
-            t += dt
+            beta  = self.mu * dt * (1 - (rb/r)**3)/rb**3 + ad*dt
+            alpha = beta * dt
 
-        r_osc_l = r_osc_l.reshape(N, 3)
-        v_osc_l = v_osc_l.reshape(N, 3)
-        r_l = r_l.reshape(N, 3)
-        v_l = v_l.reshape(N, 3)
-        r3_l = r3_l.reshape(N, 3)
-        v3_l = v3_l.reshape(N, 3)
+            R = Rb + alpha
+            V = Vb + beta
 
-        return r_osc_l, v_osc_l, r_l, v_l, r3_l, v3_l
+            Rs[i+1, :] = R
+            Vs[i+1, :] = V
+            Ts[i+1] = t
 
+            i += 1
+            t += dt 
 
-    def acc_third_body(self, bodies, r):
-        '''Compute the acceleration due to a third body
-        Parameters
-        ----------
-        bodies : CelestialBody
-            Celestial body
-        r : ndarray
-            Position vector in km
-        Returns
-        ------- 
-        acc : ndarray
-            Acceleration due to third body'''
-
-        # Mu of the bodies
-        mu = np.array([body.mu for body in bodies])
-
-        # Radius of the bodies normalized (Unpack)
-        r_norm = np.array([np.linalg.norm(i) for i in r])
-
-        # Acceleration due to third body
-        a_d = np.zeros((3, 1))
-
-        r13 = r[0] - r[2] # Radial distance between Jupiter and the Sun
-        r23 = r[1] - r[2] # Radial distance between Jupiter and Mars
-
-        r13_norm = np.linalg.norm(r13) # Normalized radius between Jupiter and the Sun
-        r23_norm = np.linalg.norm(r23) # Normalized radius between Jupiter and Mars
-
-        a_d = (((1 / mu[1]) * ((mu[1] * mu[2])/ (r23_norm ** 3))) * r23) - (((1 / mu[0]) * ((mu[0] * mu[2]) / (r13_norm ** 3))) * r13)
-
-        return a_d
-        
-
-    def plot_orbits(self, r_osc_l, r_l, r3_l):
-        '''Plot the orbits of the bodies in 3d
-        Parameters
-        ----------
-        r_osc_l : ndarray
-            Position vector in km
-        r_l : ndarray
-            Position vector in km
-        r3_l : ndarray
-            Position vector in km
-        '''
-
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-
-        ax.plot(r_osc_l[:, 0], r_osc_l[:, 1], r_osc_l[:, 2], label='Encke Osc')
-        ax.plot(r_l[:, 0], r_l[:, 1], r_l[:, 2], label='Keplerian')
-        #ax.plot(r3_l[:, 0], r3_l[:, 1], r3_l[:, 2], label='Third body')
-
-        ax.set_xlabel('X (km)')
-        ax.set_ylabel('Y (km)')
-        ax.set_zlabel('Z (km)')
-
-        # Title and legend in Spanish
-        ax.set_title('Órbitas de los cuerpos')
-        ax.legend()
-
-        plt.show()
+        return Rs, Vs, Ts
     
-    def cowell(self, t):
+    def cowell(self, t, k):
         '''Cowell method to propagate the orbit from poliastro'''
 
         # Initial conditions
@@ -181,7 +195,7 @@ class Propagator(Orbit):
         u0 = np.array([x, y, z, vx, vy, vz])
 
         # Propagation with scipy solve_ivp
-        sol = solve_ivp(self.func_twobody, (0, t), args=(k,) u0, method='RK45', rtol=1e-8, atol=1e-8, dense_output=True)
+        sol = solve_ivp(self.func_twobody, (t[0], t[-1]), u0, args=(k,), t_eval=t)
 
         rrs = []
         vvs = []
@@ -215,35 +229,67 @@ if __name__ == "__main__":
     # Bodies
     sun = CelestialBodies()
     sun.sun()
-    mars = CelestialBodies()
-    mars.mars()
-    jupiter = CelestialBodies()
-    jupiter.jupiter()
+    tierra = CelestialBodies()
+    tierra.earth()
 
-    bodies = [sun, mars, jupiter]
+    # spacecraft
+    R0 = np.array([-0.27, 1.475, 0.001]) *1e8
+    V0 = np.array([-33, -10, 1])  
+
+    # Earth orbital elements
+    a = 1.49597870700e8
+    e = 0.01671123
+    i = 0.0
+    raan = 0.0
+    argp = 0.0
+    tau = -100*24*3600
+
+    n = np.sqrt(tierra.mu/a**3)
+    M = -n * tau
+
     # Initial conditions
-    marte = Orb2rv(a = 228000000, e = 0.0934, i = 1.85, Omega = 49.562, omega = 286.537, nu = 23.33, body= mars)
-    r0 = marte.r
-    v0 = marte.v
 
-    Jupiter = Orb2rv(a = 778000000, e = 0.0489, i = 1.305, Omega = 100.556, omega = 273.867, nu = 20.02, body= jupiter)
-    r3 = Jupiter.r
-    v3 = Jupiter.v
+    # orb = Orb2rv(a=a, e=e, Omega=raan, omega=argp, i=i, M=M, body= sun)
+    # R0_tierra = orb.r
+    # V0_tierra = orb.v
 
-    # Propagation method
-    encke = Propagator(sun, r0, v0, r3, v3)
+    R0_tierra = np.array([-2.719172990721968e+07, 1.475245243392482e+08, 0])
+    V0_tierra = np.array([-29.295349119787478, -4.903140836552026, 0])
 
-    rs = np.array([0., 0., 0])           # Initial radius of the Sun
-    vs = np.array([0., 0., 0])           # Initial velocity of the Sun
-
-    r = np.array([r0, r3, rs])         # Initial radius of the bodies
+    # Inicialization
+    propagator = Propagator(sun)
 
     # Propagation
-    r_osc_l, v_osc_l, r_l, v_l, r3_l, v3_l = encke.Encke(0, 24*3600*4000, 6*3600, bodies, r)
+    dt = 24*3600
+    trange = [0, 100*dt]
+    perturbations = [[R0_tierra, R0, tierra], None, None]
 
-    # Plot orbits
-    encke.plot_orbits(r_osc_l, r_l, r3_l)
+    # Encke
+    Rs, Vs, Ts = propagator.Encke(R0, V0, dt, trange, perturbations)
 
-    v3_0 = np.array([-13.04, -.713])  # Initial velocity of Jupiter
+    orb = Orbit(sun)
+    r, v = orb.propagate(R0_tierra, V0_tierra, trange[1] ,dt)
+    rsat, vsat = orb.propagate(R0, V0, trange[1] ,dt)
 
+    # mirar vectores para que esten en posición heliocentrica
+    ##########################################################
+
+    # Plot
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    ax.plot(Rs[:, 0], Rs[:, 1], Rs[:, 2], label='Encke')
+    ax.plot(rsat[:, 0], rsat[:, 1], rsat[:, 2], label='Satellite')  
+    ax.plot(r[:, 0], r[:, 1], r[:, 2], label='Earth')
+    ax.plot([0], [0], [0], 'o', label='Sun')
+
+    ax.set_xlabel('X [km]')
+    ax.set_ylabel('Y [km]')
+    ax.set_zlabel('Z [km]')
+
+
+    ax.legend()
+    plt.show()
+    print('Done')
 
