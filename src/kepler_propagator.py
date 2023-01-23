@@ -281,6 +281,9 @@ class KeplerPropagator:
         v : numpy.array
             Velocity vector in km/s
         '''
+        if dt == 0:
+            return R, V
+
         r = np.linalg.norm(R)
         v = np.linalg.norm(V)
 
@@ -303,7 +306,10 @@ class KeplerPropagator:
             chi = np.sign(dt) * np.sqrt(-a) * np.log(-2 * self.mu * alpha * dt / (np.dot(R, V) + np.sign(dt) * np.sqrt(-self.mu * a) * (1 - r * alpha)))
 
         ratio = 1
-        while abs(ratio) > 1e-10:
+        max_iter = 1000
+        iter = 0
+
+        while np.abs(ratio) > 1e-10 and max_iter > iter:
             phi = chi**2 * alpha
 
             c2, c3 = self.c2c3fromchi(phi)
@@ -313,6 +319,7 @@ class KeplerPropagator:
 
             ratio = Q1/Q2
             chi = chi + ratio
+            iter += 1
 
         f = 1 - chi**2 * c2 / r
         g = dt - chi**3 * c3 / np.sqrt(self.mu)

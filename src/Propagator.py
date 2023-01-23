@@ -1,5 +1,6 @@
 # My libraries
-from src.Orbit import Orbit 
+from src.Orbit import Orbit
+from src.kepler_propagator import KeplerPropagator 
 from src.orb2rv import Orb2rv
 from src.perturbations import third_body, atmopheric_drag, solar_pressure
 from src.CelestialBodies import CelestialBodies
@@ -152,15 +153,17 @@ class Propagator(Orbit):
             alpha = np.zeros(3)
             beta = np.zeros(3)
 
-            orb = Orbit(self.body) 
+            orb = KeplerPropagator(self.body) 
+            # comprobar que el dt es el correcto
 
-            Rb, Vb = orb.r0v02rv(R, V, dt)
+            Rb, Vb = orb.kepler(R, V, dt)
 
             rb = np.linalg.norm(Rb)
             r = np.linalg.norm(R)
 
             # Third body position and velocity
-            R3, V3 = orb.r0v02rv(R3, V3, t)
+
+            R3, V3 = orb.kepler(R3, V3, dt)
 
             tb_params[0] = R3
             tb_params[1] = R
@@ -280,7 +283,7 @@ if __name__ == "__main__":
     ax = fig.add_subplot(111, projection='3d')
 
     ax.plot(Rs[:, 0], Rs[:, 1], Rs[:, 2], label='Encke')
-    ax.plot(rsat[:, 0], rsat[:, 1], rsat[:, 2], label='Satellite')  
+    ax.plot(rsat[:, 0], rsat[:, 1], rsat[:, 2], '--',label='Satellite')  
     ax.plot(r[:, 0], r[:, 1], r[:, 2], label='Earth')
     ax.plot([0], [0], [0], 'o', label='Sun')
 
