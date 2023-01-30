@@ -215,7 +215,7 @@ class KeplerPropagator:
         '''
         r0 = np.linalg.norm(R0)
         v0 = np.linalg.norm(V0)
-        orb = self.rv2coe(R0, V0, dt, special=None)
+        orb = self.rv2coe(R0, V0, special=None)
 
         a = orb[0]
         e = orb[1]
@@ -223,15 +223,14 @@ class KeplerPropagator:
         Omega = orb[3]
         omega = orb[4]
         nu = orb[5]
-        u = orb[6]
-        lambda_true = orb[7]
-        w_true = orb[8]
 
         if e != 0:
             E = self.nu2anomaly(e, nu)
         else:
-            E0 = u
-            E0 = lambda_true
+            for i in [6, 7]:
+                if orb[i][1] is not None:
+                    E = orb[i][1]
+                    break
 
         # Mean velocity
         # n = np.sqrt(self.mu / a ** 3)
@@ -257,11 +256,15 @@ class KeplerPropagator:
         if e != 0:
             self.nu = self.anomaly2nu(e, E)
         else:
-            u = E
-            lambda_true = E
+            for i in [6, 7]:
+                if orb[i][1] is not None:
+                    orb[i][1] = E
+                    break
 
         # Compute the position and velocity vectors
-        self.coe2rv(a, e, i, Omega, omega, nu)
+        r, v = self.coe2rv(a, e, i, Omega, omega, nu)
+
+        return r, v
 
     def kepler(self, R, V, dt):
         '''Compute the classical orbital elements from the initial state and time
@@ -402,22 +405,25 @@ class KeplerPropagator:
         w_true = np.arccos(ecc[0] / e)
         if ecc[1] < 0:
             w_true = 2 * np.pi - w_true
-            orb.append(w_true)
+            orb.append(['Elliptical', w_true])
+        else:
+            orb.append(['Ecliptical', None])
                 
-
         # Circular orbit
-
         u = np.arccos(np.dot(N, R) / (n * r))
         if R[2] < 0:
             u = 2 * np.pi - u
-            orb.append(u)
-
+            orb.append(['Circular', u])
+        else:
+            orb.append(['Elliptical', None])
 
         # Equatorial orbit
         lambda_true = np.arccos(R[0] / r)
         if R[1] < 0:
             lambda_true = 2 * np.pi - lambda_true
-            orb.append(lambda_true)
+            orb.append(['Equatorial', lambda_true])
+        else:
+            orb.append(['Elliptical', None])
 
         if special == 'equatorial':
             print('Equatorial orbit')
@@ -531,8 +537,9 @@ if __name__ == "__main__":
     dt = 40 * 60
 
     r, v = kepler.kepler(R, V, dt)
-    print(r)
-    print(v)
+    r1, v1 = kepler.keplerCOE(R, V, dt)
+    print(r, r1)
+    print(v, v1)
 
 
 
