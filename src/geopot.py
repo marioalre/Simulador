@@ -71,4 +71,12 @@ class Geopot():
 
 
 
+if __name__ == '__main__':
+    from src.CelestialBodies import CelestialBodies
 
+    Tierra = CelestialBodies()
+    Tierra.earth()
+
+    Potencial = Geopot(Tierra, 7000000, 1, 1)
+
+    Potencial.gravitational_potential()
