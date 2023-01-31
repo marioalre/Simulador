@@ -67,7 +67,8 @@ class Propagator(Orbit):
         ad = 0
         # Third body perturbation
         if third_body_p is not None:
-            R_tb = third_body_p[0]
+            R_tb = third_body_p[0][0]
+            V_tb = third_body_p[0][1]
             R_sc = third_body_p[1]  # spacecraft position
             body_tb = third_body_p[2]
 
@@ -144,8 +145,9 @@ class Propagator(Orbit):
 
         # Third body perturbation
         if tb_params is not None:
-            R3 = tb_params[0]
-            V3 = tb_params[1]
+            R3 = tb_params[0][0]
+            V3 = tb_params[0][1]
+            R = tb_params[1]
             body3 = tb_params[2]
 
         i = 0
@@ -163,9 +165,13 @@ class Propagator(Orbit):
 
             # Third body position and velocity
 
-            R3, V3 = orb.kepler(R3, V3, dt)
+            if i == 0:
+                R3, V3 = orb.kepler(R3, V3, 0)
+            else:
+                R3, V3 = orb.kepler(R3, V3, dt)
 
-            tb_params[0] = R3
+            tb_params[0][0] = R3
+            tb_params[0][1] = V3
             tb_params[1] = R
 
             if perturbations is not None:
@@ -173,6 +179,8 @@ class Propagator(Orbit):
             else:
                 ad = 0
 
+            print(ad)
+            print(np.linalg.norm(Rb - R))
             beta  = self.mu * dt * (1 - (rb/r)**3)/rb**3 + ad*dt
             alpha = beta * dt
 
@@ -264,8 +272,8 @@ if __name__ == "__main__":
 
     # Propagation
     dt = 24*3600
-    trange = [0, 100*dt]
-    perturbations = [[R0_tierra, R0, tierra], None, None]
+    trange = [0, 800*dt]
+    perturbations = [[[R0_tierra, V0_tierra], R0, tierra], None, None]
 
     # Encke
     Rs, Vs, Ts = propagator.Encke(R0, V0, dt, trange, perturbations)
