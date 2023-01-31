@@ -17,7 +17,7 @@ Tierra. Para su elaboración se utilizará Python y/o Matlab.
 
 <img src="docs/images/Lambert.png" width="600" height="400">
 
-<img src="docs/images/pert.png" width="600" height="400">
+<img src="docs/images/pert.png" width="600" height="500">
 
 <img src="docs/images/earth_spinning.png" width="600" height="400">
 
