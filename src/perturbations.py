@@ -67,22 +67,33 @@ def atmospheric_density(body, r):
 
     return rho
 
-def third_body(body, r, m):
-    '''Compute the perturbation due to a third body
+def third_body(R3, R, body3):
+    '''Compute the perturbation due to the third body
     Parameters
     ----------
-    body : Body
+    R3 : ndarray
+        Position vector of the third body
+    R : ndarray
+        Position vector of the satellite
+    body3 : Body
         Third body
-    r : ndarray
-        Position vector in km
-    m : float
-        Mass in kg
     Returns
     -------
     dr : ndarray
         Perturbation in km
     '''
-    pass
+
+    mu = body3.mu
+    r = np.linalg.norm(R)
+    r3 = np.linalg.norm(R3)
+
+    R23 = R - R3
+    r23 = np.linalg.norm(R23)
+
+    fx = (r23 / r3)**3 - 1
+    a = -mu * (R + fx*R3) / r23**3
+
+    return a
 
 
 def solar_pressure(body, r, C_S, A, m):

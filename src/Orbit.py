@@ -105,6 +105,8 @@ class Orbit():
             S = (np.sqrt(z) - np.sin(np.sqrt(z))) / np.sqrt(z)**3
         elif z < 0:
             S = (np.sinh(np.sqrt(-z)) - np.sqrt(-z)) / np.sqrt(-z)**3
+        elif z == 0:
+            S = 1 / 6
         else:
             S = 1 / 6
 
@@ -126,6 +128,8 @@ class Orbit():
             C = (1 - np.cos(np.sqrt(z))) / z
         elif z < 0:
             C = (np.cosh(np.sqrt(-z)) - 1) / (-z)
+        elif z == 0:
+            C = 1 / 2
         else:
             C = 1 / 2
 

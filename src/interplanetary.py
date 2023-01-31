@@ -1,6 +1,7 @@
 import numpy as np
 from src.Orbit import Orbit
 from src.orb2rv import Orb2rv
+from src.Lambert import Lambert
 
 class Interplanetary:
     '''Interplanetary trajectory'''
@@ -125,6 +126,41 @@ class Interplanetary:
 
         return J2000_coe, cent_rates_coe
         
+    def planetary_mission(self, planet_departure, date_departure, planet_arr, date_arr):
+        '''Interplanetary mission by patched conics method
+        Parameters
+        ----------
+        planet_departure : CelestialBody
+            Planet of departure
+        date_departure : array
+            Departure date
+            Format: [year, month, day, hour, minute, second]
+        planet_arr : CelestialBody
+            Planet of arrival
+        date_arr : array
+            Arrival date
+            Format: [year, month, day, hour, minute, second]
+        Returns
+        -------
+        r : numpy array
+            Position vector
+        v : numpy array
+            Velocity vector
+        '''
+
+        # Departure date
+        r_departure, v_departure = self.sv_planets(planet_departure, date_departure[:2], date_departure[3:5])
+
+        r_arr , v_arr = self.sv_planets(planet_arr, date_arr[:2], date_arr[3:5])
+
+        # Calculate the delta v with the Lambert's problem
+        deltaV = Lambert(r_departure, r_arr, self.central_body)
+
+        # Calculate the total delta v
+        # Optimized time of flight to minimize the total delta v with a genetic algorithm
+
+        pass
+
 
 
 def J0(year, month, day):
@@ -217,6 +253,7 @@ if __name__ == '__main__':
     pos = inter.sv_planets(planet, date, time)
 
     print(f'ECI frame: position = {pos[0]} km, velocity = {pos[1]} km/s')
+
 
 
 
