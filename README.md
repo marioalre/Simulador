@@ -21,4 +21,4 @@ Tierra. Para su elaboración se utilizará Python y/o Matlab.
 
 <img src="docs/images/earth_spinning.png" width="600" height="400">
 
-<img src="docs/images/trazas_mapa.png" width="600" height="400">
+<img src="docs/images/trazas_mapa.png" width="700" height="400">
