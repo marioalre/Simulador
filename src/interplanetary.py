@@ -69,7 +69,7 @@ class Interplanetary:
         r = orb.r
         v = orb.v
 
-        return r, v
+        return r, v, jd
 
     def planetary_elements(self, planet):
         '''Planetary elements from JPL Horizons database
@@ -142,25 +142,34 @@ class Interplanetary:
             Format: [year, month, day, hour, minute, second]
         Returns
         -------
-        r : numpy array
-            Position vector
-        v : numpy array
-            Velocity vector
+        V_depart_need : numpy array
+            Departure velocity vector needed
+        V_arr_need : numpy array
+            Arrival velocity vector needed
         '''
 
         # Departure date
-        r_departure, v_departure = self.sv_planets(planet_departure, date_departure[:2], date_departure[3:5])
+        r_departure, v_departure, jd_departure = self.sv_planets(planet_departure, date_departure[:3], date_departure[3:])
 
-        r_arr , v_arr = self.sv_planets(planet_arr, date_arr[:2], date_arr[3:5])
+        r_arr , v_arr, jd_arr = self.sv_planets(planet_arr, date_arr[:3], date_arr[3:])
 
-        # Calculate the delta v with the Lambert's problem
-        deltaV = Lambert(r_departure, r_arr, self.central_body)
+        tof = (jd_arr - jd_departure) * 24 * 3600
 
         # Calculate the total delta v
         # Optimized time of flight to minimize the total delta v with a genetic algorithm
 
-        pass
+        R1 = r_departure
+        R2 = r_arr
+        # Calculate the delta v with the Lambert's problem
+        lambert = Lambert(R1, R2, self.central_body)
 
+        V_depart_need, V_arr_need = lambert.universal(tof, 'pro')
+
+        planet1 = [r_departure, v_departure, jd_departure]
+        planet2 = [r_arr, v_arr, jd_arr]
+        vel = [V_depart_need, V_arr_need]
+
+        return planet1, planet2, vel
 
 
 def J0(year, month, day):
@@ -239,9 +248,11 @@ if __name__ == '__main__':
     from src.CelestialBodies import CelestialBodies
 
     planet = CelestialBodies()
+    planet1 = CelestialBodies()
     Sun = CelestialBodies()
     Sun.sun()
     planet.earth()
+    planet1.mars()
 
     date = np.array([2003, 8, 27])
     time = np.array([12, 0, 0])
@@ -254,6 +265,17 @@ if __name__ == '__main__':
 
     print(f'ECI frame: position = {pos[0]} km, velocity = {pos[1]} km/s')
 
+    planet1, planet2, vel = inter.planetary_mission(planet, [1996, 11, 7, 0, 0, 0], planet1, [1997, 9, 12, 0, 0, 0])
+
+    v_inf_1 = vel[0] - planet1[1] 
+    v_inf_2 = vel[1] - planet2[1] 
+
+    print(f'Planet 1: position = {planet1[0]} km, velocity = {planet1[1]} km/s')
+    print(f'Planet 2: position = {planet2[0]} km, velocity = {planet2[1]} km/s')
+    print(f'Velocity needed at departure: {vel[0]} km/s')
+    print(f'Velocity needed at arrival: {vel[1]} km/s')
+    print(f'velocity inf 1: {v_inf_1} km/s')
+    print(f'velocity inf 2: {v_inf_2} km/s')
 
 
 
