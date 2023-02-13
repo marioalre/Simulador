@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
-from scipy.special import lpmn, factorial
+from scipy.special import lpn, factorial, lpmn
 
 class Geopot():
     '''Class to calculate the potential arround the Earth'''
@@ -10,8 +10,17 @@ class Geopot():
         self.mu = body.mu * 1e9  # Gravitational parameter [m^3/s^2]
         self.a = 6378136.3         # Earth equatorial radius [m]
 
-    def gravitational_potential(self, r, elevation, azimuth):
-        '''Gravitational potential 4.42'''
+    def gravitational_potential(self, r, elevation, azimuth, order=None):
+        '''Gravitational potential 4.42
+        Args:
+            r: radius [m]
+            elevation: elevation angle [rad]
+            azimuth: azimuth angle [rad]
+            order: order of the expansion
+        Returns:
+            Gravitational potential [m^2/s^2]
+            Gravitational acceleration [m/s^2]
+        '''
         
         self.r = r                 # Radius [m]
         self.elev = elevation      # Elevation angle [rad]
@@ -28,11 +37,14 @@ class Geopot():
         # Max column 1 and 2
         nn = np.max(data[:, 0])
         mm = np.max(data[:, 1])
-        N_max = int(np.max([nn, mm]))
-#        N_max = 2
+
+        if order is None:
+            N_max = int(np.max([nn, mm]))
+        else:
+            N_max = order
 
         # Legendre polynomials
-        P, Pd = self.legendre(N_max, np.sin(self.elev))
+        P, Pd = self.legendre(N_max+1, np.sin(self.elev))
 
         for i in range(N_max):
 
@@ -64,20 +76,52 @@ class Geopot():
         print(f'Gravedad en valor absoluto: {np.linalg.norm(self.grav)}')
         print(f'Potencial: {self.pot}')
 
-    def legendre(self, N_max, x):
+    def legendre(self, N, x):
         '''Legendre polynomials
-        N_max: degree max
+        N: degree max
         m: order
         x: argument
         Returns: 
         Legendre polynomial normalized evaluated at x
         '''
-        P, Pd= lpmn(N_max, N_max, x)
+        L, Ld= lpn(N, x)
 
+        # P, Pd = lpmn(N, N, x)
+        
+        
+        P = np.zeros((N, N))
+        Pd = np.zeros((N, N))
+
+        full_derivs = np.zeros((N+1,N))
+
+        P[0, :] = L[:-1]
+        Pd[0, :] = Ld[:-1]
+
+        full_derivs[0, :] = Pd[0, :]
+
+ 
+        for j in range(1, N+1):
+            for i in range(2, N):
+                n = i - 1
+                full_derivs[j, i] = ((2*n + 1)*((j+1)*full_derivs[j-1, i-1] + x*full_derivs[j, i-1]) 
+                                    - n*full_derivs[j, i-2])/(n + 1)
+
+        for m in range(1, N):
+            for n in range(m, N):
+                '''
+           #     if norm_type not in ["positive", "egm96"]:
+           #         factor = (-1)**(m-1)
+           #     else:
+                '''
+                factor = 1
+                P[m, n] = factor*(1 - x**2)**((m)/2)*full_derivs[m-1, n]
+                Pd[m, n] = -factor*((m)/2)*(1 - x**2)**(((m)/2)-1)*2*x + \
+                        factor*(1-x**2)**((m)/2)*full_derivs[m, n]
+        
         # Normalization
 
-        for m in range(N_max):       # Order
-            for n in range(N_max):   # Degree
+        for n in range(N):       # Order
+            for m in range(N):   # Degree
                 if n >= m:
                     factor = (2*n + 1)*factorial(n - m)/factorial(n + m)
                         
@@ -103,18 +147,29 @@ class Geopot():
         error = 1
 
         # Create some longitude, latitude, and third data
-        longitudes = np.linspace(-180, 180, resolucion)
-        latitudes = np.linspace(-90, 90, resolucion)
+        elevacion = np.linspace(-180, 180, resolucion)
+        elev_rad = elevacion* np.pi / 180
+        azimuth = np.linspace(-90, 90, resolucion)
+        azi_rad = azimuth* np.pi / 180
 
-        third_data = np.zeros((len(latitudes), len(longitudes))) # rows, columns
-        # Calculate the third data
+        values = []
 
-        for i, lat in enumerate(latitudes):
-            for j, lon in enumerate(longitudes):
-                print(f'Calculando {i} de {len(latitudes)} y {j} de {len(longitudes)}')
+        cont = 0
+
+        for i, lat in enumerate(elev_rad):
+            for j, lon in enumerate(azi_rad):
+                print(f'Calculando {i} de {len(elevacion)} y {j} de {len(azimuth)}')
                 self.gravitational_potential(self.r ,lon, lat)
-                third_data[i, j] = self.pot - self.pot_ideal
-                print(f'Acc: {third_data[i, j]}')
+
+                third_data = (self.pot - self.pot_ideal) * self.a**2 / self.mu
+                print(f'Acc: {third_data}')
+
+                values.append([self.elev, self.azi, third_data]) 
+                cont += 1
+
+
+        elev , azi, third_data = [i[0] for i in values], [i[1] for i in values], [i[2] for i in values]
+
         while error == 1:   # Check if the input is correct
             if type == '2D':
                 # Load the map image
@@ -127,7 +182,7 @@ class Geopot():
                 ax.imshow(img, extent=[-180, 180, -90, 90], zorder=0)
 
                 # Plot the longitude, latitude, and third data with 50% transparency
-                sc = ax.scatter(longitudes, latitudes, c=third_data, cmap='viridis', alpha=0.5, zorder=1)
+                sc = ax.scatter(azi*180/np.pi, elev*180/np.pi, c=third_data, cmap='viridis', alpha=0.5, zorder=1)
 
                 # Add a color bar for the third data
                 cbar = plt.colorbar(sc)
@@ -136,18 +191,18 @@ class Geopot():
                 # Set the limits and label of the axis
                 ax.set_xlim(-180, 180)
                 ax.set_ylim(-90, 90)
-                ax.set_xlabel('Longitude')
-                ax.set_ylabel('Latitude')
+                ax.set_xlabel('Elevation')
+                ax.set_ylabel('Azimuth')
 
                 # Show the plot
                 plt.show()
                 error = 0
 
             elif type == '3D':
-                
-                x = np.sin(latitudes / 180.0 * np.pi) * np.cos(longitudes / 180.0 * np.pi)
-                y = np.sin(latitudes / 180.0 * np.pi) * np.sin(longitudes / 180.0 * np.pi)
-                z = np.cos(latitudes / 180.0 * np.pi)
+                # No se ha probado
+                x = np.sin(elev_rad / 180.0 * np.pi) * np.cos(azi_rad / 180.0 * np.pi)
+                y = np.sin(elev_rad / 180.0 * np.pi) * np.sin(azi_rad / 180.0 * np.pi)
+                z = np.cos(elev_rad / 180.0 * np.pi)
 
                 # Crea una figura y un eje 3D
                 fig = plt.figure()
@@ -190,6 +245,6 @@ if __name__ == '__main__':
 
     Potencial = Geopot(Tierra)
 
-    Potencial.gravitational_potential(7000000 ,1 , 1)
+    Potencial.gravitational_potential(7000000 ,1 , 1, 20)
 
-    Potencial.plot_potential()
+    Potencial.plot_potential(resolucion=45)
