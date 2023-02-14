@@ -177,7 +177,7 @@ class Geopot():
                     third_data = self.pot
                     print(f'Potential: {third_data} m^2/s^2')
                 elif option == 'gravity':
-                    third_data = np.linalg.norm(self.grav)
+                    third_data = np.linalg.norm(self.grav) - self.mu / self.a**2
                     print(f'Acc: {third_data} m/s^2')
                 else:
                     Warning('Option not valid, by default it will calculate the potential')
@@ -253,10 +253,10 @@ class Geopot():
                 error = 0
 
             elif dtype == '3D':
-                # No se ha probado
-                x = np.sin(elev) * np.cos(azi)
-                y = np.sin(elev) * np.sin(azi)
-                z = np.cos(elev)
+
+                x = np.cos(elev) * np.cos(azi)
+                y = np.cos(elev) * np.sin(azi)
+                z = np.sin(elev)
 
                 # Crea una figura y un eje 3D
                 fig = plt.figure()
@@ -284,6 +284,9 @@ class Geopot():
                 ax.set_xlabel('Eje X')
                 ax.set_ylabel('Eje Y')
                 ax.set_zlabel('Eje Z')
+
+                # Muestra el gráfico
+                plt.show()
 
                 error = 0
             else:
@@ -363,12 +366,12 @@ if __name__ == '__main__':
 
     # Potencial.gravitational_potential(7000000 ,1 , 1, 20)
 
-    data1, data2, data3 = Potencial.calculate(resolucion=90, order=20, option='gravity')
+    #data1, data2, data3 = Potencial.calculate(resolucion=90, order=20, option='gravity')
 
-    Potencial.write_data('prueba', data1, data2, data3)
+    #Potencial.write_data('gravity', data1, data2, data3)
 
-    # data = Potencial.read_data('data')
-    data = [data1, data2, data3]
+    data = Potencial.read_data('data')
+    #data = [data1, data2, data3]
 
     Potencial.plot_potential(data, dtype='2D')
-    # Potencial.plot_potential(data, type='3D')
+    Potencial.plot_potential(data, dtype='3D')
