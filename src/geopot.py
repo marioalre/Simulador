@@ -64,11 +64,11 @@ class Geopot():
             self.grav[2] = self.grav[2] + self.mu / self.r**(n+2) / np.sin(self.elev) * self.a**n * Pn * m *(S * np.cos(m * self.azi) - C * np.sin(m * self.azi))
 
 
-            rot = np.array([[np.cos(self.azi)*np.sin(self.elev), np.cos(self.azi)*np.cos(self.elev), -np.sin(self.azi)],
-                            [np.sin(self.azi)*np.sin(self.elev), np.sin(self.azi)*np.cos(self.elev), np.cos(self.azi)],
-                            [np.cos(self.elev), -np.sin(self.elev), 0]])
+        rot = np.array([[np.cos(self.azi)*np.sin(self.elev), np.cos(self.azi)*np.cos(self.elev), -np.sin(self.azi)],
+                        [np.sin(self.azi)*np.sin(self.elev), np.sin(self.azi)*np.cos(self.elev), np.cos(self.azi)],
+                        [np.cos(self.elev), -np.sin(self.elev), 0]])
 
-            self.grav = np.dot(rot, self.grav)
+        self.grav = np.dot(rot, self.grav)
 
             #print(self.pot)
             #print(self.grav)
@@ -142,9 +142,21 @@ class Geopot():
         
         return P, Pd
 
-    def plot_potential(self, resolucion = 180, type='2D'):
-        '''Plot the potential arround the Earth'''
-        error = 1
+    def calculate(self, resolucion=90, order=20, option='potential'):
+        '''Calculate the potential and gravity field
+        Parameters:
+        ----------
+        resolucion: int
+            Resolution of the grid
+        order: int
+            Order of the expansion
+        option: str
+            Option to calculate the potential or the gravity field
+        Returns:
+        -------
+        values: list
+            List with the values of the potential or gravity field
+        '''
 
         # Create some longitude, latitude, and third data
         elevacion = np.linspace(-180, 180, resolucion)
@@ -159,19 +171,61 @@ class Geopot():
         for i, lat in enumerate(elev_rad):
             for j, lon in enumerate(azi_rad):
                 print(f'Calculando {i} de {len(elevacion)} y {j} de {len(azimuth)}')
-                self.gravitational_potential(self.r ,lon, lat)
+                self.gravitational_potential(self.a ,lon, lat, order=order)
 
-                third_data = (self.pot - self.pot_ideal) * self.a**2 / self.mu
-                print(f'Acc: {third_data}')
+                if option == 'potential':
+                    third_data = self.pot
+                    print(f'Potential: {third_data} m^2/s^2')
+                elif option == 'gravity':
+                    third_data = np.linalg.norm(self.grav)
+                    print(f'Acc: {third_data} m/s^2')
+                else:
+                    Warning('Option not valid, by default it will calculate the potential')
+                    third_data = self.pot
+                    print(f'Potential: {third_data} m^2/s^2')
+
 
                 values.append([self.elev, self.azi, third_data]) 
                 cont += 1
 
 
         elev , azi, third_data = [i[0] for i in values], [i[1] for i in values], [i[2] for i in values]
+        # Numpy arrays
+        elev = np.array(elev) # radians
+        azi = np.array(azi)   # radians
+        third_data = np.array(third_data)  
+
+        # data = [elev, azi, third_data]
+
+        return elev, azi, third_data
+
+    def plot_potential(self, data, dtype='2D'):
+        '''Plot the potential arround the Earth
+        Parameters:
+        ----------
+        data: list
+            List with the data to plot
+        type: str
+            Type of plot. 2D or 3D
+        Returns:
+        -------
+        Plot of the potential
+        '''
+
+        elev, azi, third_data = data[0], data[1], data[2]
+
+        # Check if it is a numpy array
+        if type(elev) != np.ndarray:
+            elev = np.array(elev)
+        if type(azi) != np.ndarray:
+            azi = np.array(azi)
+        if type(third_data) != np.ndarray:
+            third_data = np.array(third_data)
+
+        error = 1
 
         while error == 1:   # Check if the input is correct
-            if type == '2D':
+            if dtype == '2D':
                 # Load the map image
                 img = plt.imread('data\mapa.png')
 
@@ -198,11 +252,11 @@ class Geopot():
                 plt.show()
                 error = 0
 
-            elif type == '3D':
+            elif dtype == '3D':
                 # No se ha probado
-                x = np.sin(elev_rad / 180.0 * np.pi) * np.cos(azi_rad / 180.0 * np.pi)
-                y = np.sin(elev_rad / 180.0 * np.pi) * np.sin(azi_rad / 180.0 * np.pi)
-                z = np.cos(elev_rad / 180.0 * np.pi)
+                x = np.sin(elev) * np.cos(azi)
+                y = np.sin(elev) * np.sin(azi)
+                z = np.cos(elev)
 
                 # Crea una figura y un eje 3D
                 fig = plt.figure()
@@ -236,6 +290,68 @@ class Geopot():
                 print('Type not valid')
                 error = 1
 
+    def write_data(self, name, list1, list2, list3):
+        '''Write the data in a csv file
+        Parameters
+        ----------
+        name : str
+            Name of the file
+        list1 : list
+            List with the first data
+        list2 : list
+            List with the second data
+        list3 : list
+            List with the third data
+
+        Returns
+        -------
+        None
+        '''
+
+        str_name = "data/" + str(name) + ".txt"
+
+        with open('data/data.txt', 'w') as f:
+            for i in range(len(list1)):
+                line = str(list1[i]) + ',' + str(list2[i]) + ',' + str(list3[i]) + '\n'
+                f.write(line)
+
+        # Close the file
+        f.close()
+
+    def read_data(self, name):
+        '''Read the data from a csv file
+        Parameters
+        ----------
+        name : str
+            Name of the file
+        Returns
+        -------
+        data : list
+            List with the data
+        '''
+
+        path = "data/" + str(name) + ".txt"
+
+        with open(path, 'r') as f:
+            data = f.readlines()
+            
+            f.close()
+
+        # Remove the \n
+        data = [i.replace('\n', '') for i in data]
+
+        # Split the data and distribute it in 3 lists
+        data = [i.split(',') for i in data]
+
+        # change the data shape
+        data = [[float(i[0]), float(i[1]), float(i[2])] for i in data]
+
+        elev, azi, third_data = [i[0] for i in data], [i[1] for i in data], [i[2] for i in data]
+
+        data = [elev, azi, third_data]
+
+        return data
+
 
 if __name__ == '__main__':
     from src.CelestialBodies import CelestialBodies
@@ -245,6 +361,14 @@ if __name__ == '__main__':
 
     Potencial = Geopot(Tierra)
 
-    Potencial.gravitational_potential(7000000 ,1 , 1, 20)
+    # Potencial.gravitational_potential(7000000 ,1 , 1, 20)
 
-    Potencial.plot_potential(resolucion=45)
+    data1, data2, data3 = Potencial.calculate(resolucion=90, order=20, option='gravity')
+
+    Potencial.write_data('prueba', data1, data2, data3)
+
+    # data = Potencial.read_data('data')
+    data = [data1, data2, data3]
+
+    Potencial.plot_potential(data, dtype='2D')
+    # Potencial.plot_potential(data, type='3D')
