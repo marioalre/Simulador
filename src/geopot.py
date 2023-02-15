@@ -108,11 +108,6 @@ class Geopot():
 
         for m in range(1, N):
             for n in range(m, N):
-                '''
-           #     if norm_type not in ["positive", "egm96"]:
-           #         factor = (-1)**(m-1)
-           #     else:
-                '''
                 factor = 1
                 P[m, n] = factor*(1 - x**2)**((m)/2)*full_derivs[m-1, n]
                 Pd[m, n] = -factor*((m)/2)*(1 - x**2)**(((m)/2)-1)*2*x + \
