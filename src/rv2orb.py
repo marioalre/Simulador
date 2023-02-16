@@ -5,7 +5,7 @@ from src.Orbit import Orbit
 
 class Rv2orb(Orbit):
     '''Position and velocity vectors to orbital parameters'''
-    def __init__(self, r, v, body, t0, t):
+    def __init__(self, r, v, body, dt):
         '''Initialize the class
         Parameters
         ----------
@@ -24,7 +24,7 @@ class Rv2orb(Orbit):
         self.v = v   # velocity vector ECI
         self.mu = body.mu
         self.h = np.cross(self.r, self.v)
-        self.dt = t - t0
+        self.dt = dt
         self.e = self.eccentricity() # eccentricity vector
         self.ecc = np.linalg.norm(self.e) # eccentricity
         self.a = self.semi_major_axis()

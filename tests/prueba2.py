@@ -17,7 +17,7 @@ if __name__ == '__main__':
     cuerpo.earth()
     # Orbit
 
-    orbit = Rv2orb(r, v, cuerpo, t0, t)
+    orbit = Rv2orb(r, v, cuerpo, t0-t)
 
     # Print results
     print('Semi-major axis: {} km'.format(orbit.a))
@@ -36,7 +36,7 @@ if __name__ == '__main__':
     omega = 60 * np.pi / 180 # rad
     nu = 30 * np.pi / 180 # rad
 
-    orbit = Orb2rv(h, e, Omega, omega, i, nu, cuerpo)
+    orbit = Orb2rv(h=h, e=e,Omega= Omega, omega=omega, i=i, nu=nu, body=cuerpo)
 
     print('Position vector: {} km'.format(orbit.r))
     print('Velocity vector: {} km/s'.format(orbit.v))

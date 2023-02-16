@@ -58,7 +58,7 @@ t = 3600
 
 # Orbit
 
-orbit = Rv2orb(r[-1, :], v[-1, :], Tierra, t0, t)
+orbit = Rv2orb(r[-1, :], v[-1, :], Tierra, t0-t)
 
 # Print results
 print('Semi-major axis: {} km'.format(orbit.a))
