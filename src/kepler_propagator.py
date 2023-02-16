@@ -405,15 +405,15 @@ class KeplerPropagator:
         w_true = np.arccos(ecc[0] / e)
         if ecc[1] < 0:
             w_true = 2 * np.pi - w_true
-            orb.append(['Elliptical', w_true])
+            orb.append(['Elliptical equatorial', w_true])
         else:
-            orb.append(['Ecliptical', None])
+            orb.append(['Elliptical', None])
                 
         # Circular orbit
         u = np.arccos(np.dot(N, R) / (n * r))
         if R[2] < 0:
             u = 2 * np.pi - u
-            orb.append(['Circular', u])
+            orb.append(['Circular Inclined', u])
         else:
             orb.append(['Elliptical', None])
 
@@ -421,20 +421,20 @@ class KeplerPropagator:
         lambda_true = np.arccos(R[0] / r)
         if R[1] < 0:
             lambda_true = 2 * np.pi - lambda_true
-            orb.append(['Equatorial', lambda_true])
+            orb.append(['Circular equatorial', lambda_true])
         else:
             orb.append(['Elliptical', None])
 
-        if special == 'equatorial':
-            print('Equatorial orbit')
-        elif special == 'circular':
-            print('Circular orbit')
-        elif special == 'ecliptic':
-            print('Ecliptical orbit')
+        if special == 'Circular equatorial':
+            print('Circular equatorial orbit')
+        elif special == 'Circular Inclined':
+            print('Circular Inclined orbit')
+        elif special == 'Elliptical equatorial':
+            print('Elliptical equatorial orbit')
 
         return orb
 
-    def coe2rv(self, p, e, i, Omega, omega, nu, extra=None, special=None):
+    def coe2rv(self, p, e, i, Omega, omega, nu, extra=None):
         '''Compute the position and velocity vectors from the classical orbital elements
         A.9
         Parameters
@@ -452,16 +452,16 @@ class KeplerPropagator:
         nu : float
             True anomaly in radians
         extra : list
-            Special case (For parabolic and hyperbolic orbits)
+            *special : str
+                Special case (For parabolic and hyperbolic orbits)
+                circular, equatorial, ecliptic
+            *Special case (For parabolic and hyperbolic orbits)
             - u : float
                 True longitude in radians
             - lambda_true : float
                 True longitude in radians
             - w_true : float
                 True longitude in radians
-        special : str
-            Special case (For parabolic and hyperbolic orbits)
-            circular, equatorial, ecliptic
         Returns
         -------
         r : numpy.array
@@ -469,17 +469,18 @@ class KeplerPropagator:
         v : numpy.array
             Velocity vector in km/s
         '''
+        
         if extra is not None:
-            if special == 'equatorial':
+            if extra[0] == 'Circular equatorial':
                 omega = 0
                 Omega = 0
                 nu = extra[1]
-            elif special == 'circular':
+            elif extra[0] == 'Circular Inclined':
                 omega = 0
-                nu = extra[0]
-            elif special == 'ecliptic':
+                nu = extra[1]
+            elif extra[0] == 'Elliptical equatorial':
                 Omega = 0
-                omega = extra[2]
+                omega = extra[1]
 
         r = np.array([p * np.cos(nu) / (1 + e * np.cos(nu)), p * np.sin(nu) / (1 + e * np.cos(nu)), 0]) 
         v = np.array([-np.sqrt(self.mu / p) * np.sin(nu), np.sqrt(self.mu / p) * (e + np.cos(nu)), 0])
@@ -504,6 +505,84 @@ class KeplerPropagator:
         v = rotation_matrix @ v
 
         return r, v
+
+    def keplerP(self, R0, V0, dt, dn0, ddn0):
+        '''Propagate the orbit using the Kepler equations
+        including the perturbations 
+        Parameters
+        R0 : numpy.array
+            Initial position vector in km
+        V0 : numpy.array
+            Initial velocity vector in km/s
+        dt : float
+            Time to propagate in seconds
+        dn0 : numpy.array
+            Initial perturbation vector in km/s
+        ddn0 : numpy.array
+            Initial perturbation vector in km/s^2
+        Returns
+        -------
+        R : numpy.array
+            Position vector in km
+        V : numpy.array
+            Velocity vector in km/s
+        '''
+        
+        orb = self.rv2coe(R0, V0) # tener en cuenta casos especiales
+
+        a0 = orb[0]
+        e0 = orb[1]
+        i0 = orb[2]
+        Omega0 = orb[3]
+        omega0 = orb[4]
+        nu0 = orb[5]
+
+        # Special cases
+        if orb[6][0] == 'Circular Inclined':
+            extra = orb[6][1]
+        elif orb[6][0]== 'Circular equatorial':
+            extra = orb[6][1]
+        elif orb[6][0] == 'Elliptical equatorial':
+            extra = orb[6][1]
+        else:
+            print('No special case')
+
+        if e0 != 0:
+            E0 = self.nu2anomaly(nu0, e0)
+        else:
+            if orb[6][0] == 'Circular equatorial':
+                E0 = extra  # lambda_true
+            elif orb[6][0] == 'Circular Inclined':
+                E0 = extra # U
+
+        M0 = E0 - e0 * np.sin(E0)
+        p0 = a0 * (1 - e0**2)
+        n0 = np.sqrt(self.mu / a0**3)
+
+        # Perturbations
+        a = a0 - 2/3 * a0/n0 * dn0 * dt
+
+        e = e0 - 2/3 * (1 - e0)/n0 * dn0 * dt
+
+        Omega0 = Omega0 - 3/2 * n0 * self.radius**2 * self.body.J2 / p0**2 * np.cos(i0) * dt
+
+        omega0 = omega0 + 3/4 * n0 * self.radius**2 * self.body.J2 / p0**2 * (4 - 5 * np.sin(i0)**2) * dt
+
+        M  = M0 + n0 * dt + 1/2 * dn0* dt**2 + 1/6 * ddn0 * dt**3
+
+        p = a * (1 - e**2)
+
+        E = self.KepEqtnE(M, e)
+
+        if e != 0:
+            nu = self.anomaly2nu(E, e)
+        else:
+            if orb[6][0] == 'Circular equatorial':
+                extra = E # lambda_true
+            elif orb[6][0] == 'Circular Inclined':
+                entra = E  # U
+
+        R, V = self.coe2rv(p, e, i0, Omega0, omega0, nu, extra, orb[6][0])
 
 
 if __name__ == "__main__":
