@@ -1,5 +1,6 @@
 import numpy as np
 import folium
+from src.time_conv import ConvTime
 
 def rotation_matrix_1(angle):
     '''Rotation matrix around the x axis'''
@@ -141,6 +142,47 @@ def plot_ground_track(lat = None, long = None, map = None):
         folium.CircleMarker(location=latlong, radius=0.6, color=color).add_to(map)
 
     return map
+
+def fk5(self, r_gcrf, v_gcrf, date, UTC, dUT1, dAT, xp, yp):
+        '''This function is used to convert the position and velocity vectors from GCRF to FK5
+        celestial reference frame (GCRF) to terrestrial reference frame (ITRF).
+        Parameters
+        ----------
+        r_gcrf : numpy array
+            Position vector in GCRF
+        v_gcrf : numpy array
+            Velocity vector in GCRF
+        date : list
+            Date in the format [year, month, day]
+        UTC : string
+            UTC time in the format HH:MM:SS
+        dUT1 : float
+            Difference between UT1 and UTC
+        dAT : float
+            Difference between TAI and UTC
+        xp : float
+            Polar motion x-coordinate
+        yp : float
+            Polar motion y-coordinate
+        Returns
+        ------- 
+        r_ITRF : numpy array
+            Position vector in ITRF
+        v_ITRF : numpy array
+            Velocity vector in ITRF
+        '''
+        UT1 = ConvTime(date, UTC, dUT1, dAT, 'UT1')
+        TAI = ConvTime(date, UTC, dUT1, dAT, 'TAI')
+        TT = ConvTime(date, UTC, dUT1, dAT, 'TT')
+        T_UT1 = ConvTime(date, UTC, dUT1, dAT, 'T_UT1')
+        T_TT = ConvTime(date, UTC, dUT1, dAT, 'T_TT')
+
+        # Find precession and nutation angles
+        # Precession angles
+        pass
+
+
+
 
 
     
