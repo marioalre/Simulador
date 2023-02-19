@@ -1,6 +1,5 @@
 import numpy as np
-from src.orb2rv import Orb2rv
-from src.rv2orb import Rv2orb
+from src.utilities import Utilities
 
 class KeplerPropagator:
 
@@ -619,6 +618,13 @@ if __name__ == "__main__":
     r1, v1 = kepler.keplerCOE(R, V, dt)
     print(r, r1)
     print(v, v1)
+
+
+    util = Utilities(earth)
+
+    # Decode the TLE string
+    tle_data = util.decode_tle('data/paz.tle')
+    print(tle_data)
 
 
 

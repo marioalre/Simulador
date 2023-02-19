@@ -1,4 +1,5 @@
 import numpy as np
+import datetime
 from src.Orbit import Orbit
 from src.rv2orb import Rv2orb
 
@@ -272,9 +273,9 @@ class Utilities:
 
         return r, v
 
-###############################################################################################################333
+###############################################################################################################
 # Gauss' method with iterative improvement
-###############################################################################################################333
+###############################################################################################################
     def Gauss_POD(self, q1, q2, q3, R1, R2, R3, t1, t2, t3):
         '''This function calculates the position and velocity vectors from the observation of a satellite.
         Gauss' method is used to calculate the position and velocity vectors.
@@ -404,7 +405,7 @@ class Utilities:
 
     def rv2coe(self):
         '''This function calculates the orbital elements from the position and velocity vectors.'''
-        orb = Rv2orb(self.r2, self.v2, self.central_body, 0, 0)
+        orb = Rv2orb(self.r2, self.v2, self.central_body, 0)
         deg = 180 / np.pi
         # Print the orbital elements
         print(f'Orbital elements of the satellite:')
@@ -537,6 +538,54 @@ class Utilities:
         
         return Q
 
+##############################################################################################################
+#  TLE files                                                                                                 #
+##############################################################################################################
+    
+    def decode_tle(self, tle_path):
+        '''Decode a two-line element set (TLE) into orbital elements.'''
+
+        # Read the TLE file
+        with open(tle_path, 'r') as tle_file:
+            tle = tle_file.read()
+
+
+        # Split the TLE into lines
+        lines = tle.strip().split('\n')
+
+        # Extract the satellite name and TLE data from the lines
+        name = lines[0].strip()
+        line1 = lines[1].strip()
+        line2 = lines[2].strip()
+
+        # Extract the orbital elements from the TLE data
+        inclination = float(line2[8:16])
+        raan = float(line2[17:25])
+        eccentricity = float("0." + line2[26:33])
+        arg_of_perigee = float(line2[34:42])
+        mean_anomaly = float(line2[43:51])
+        mean_motion = float(line2[52:63])
+        epoch_year = int(line1[18:20])
+        epoch_day = float(line1[20:32])
+
+        # Calculate the epoch time in UTC
+        epoch_year += 1900 if epoch_year >= 57 else 2000
+        epoch_day = int(epoch_day)
+        epoch_time = datetime.datetime(year=epoch_year, month=1, day=1) + datetime.timedelta(days=epoch_day - 1)
+
+        # Return the extracted values as a dictionary
+        tle_data = {
+            'name': name,
+            'inclination': inclination,
+            'raan': raan,
+            'eccentricity': eccentricity,
+            'arg_of_perigee': arg_of_perigee,
+            'mean_anomaly': mean_anomaly,
+            'mean_motion': mean_motion,
+            'epoch': epoch_time
+        }
+        return tle_data
+
 if __name__ == '__main__':
 
     from CelestialBodies import CelestialBodies
@@ -558,7 +607,6 @@ if __name__ == '__main__':
         r[i] = util.r_with_ralst(40, lst[i], Tierra.f, 1)
     print(f'q{i}: {q} \nr{i}: {r}')
 
-
     t1 = 0
     t2 = 118.10
     t3 = 237.58
@@ -573,5 +621,7 @@ if __name__ == '__main__':
     print('The velocity vector is: ', v)
 
     orb = util.rv2coe()
+   
+
         
 
