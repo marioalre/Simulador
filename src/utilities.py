@@ -568,6 +568,11 @@ class Utilities:
         epoch_year = int(line1[18:20])
         epoch_day = float(line1[20:32])
 
+        # derivate of mean motion
+        d_mean_motion = float(line1[34:43])
+        # Second derivate of mean motion
+        dd_mean_motion = float(line1[45:50]) * 10**(float(line1[50:52]) + 5.)
+
         # Calculate the epoch time in UTC
         epoch_year += 1900 if epoch_year >= 57 else 2000
         epoch_day = int(epoch_day)
@@ -582,7 +587,9 @@ class Utilities:
             'arg_of_perigee': arg_of_perigee,
             'mean_anomaly': mean_anomaly,
             'mean_motion': mean_motion,
-            'epoch': epoch_time
+            'epoch': epoch_time,
+            'd_mean_motion': d_mean_motion,
+            'dd_mean_motion': dd_mean_motion
         }
         return tle_data
 
@@ -621,6 +628,18 @@ if __name__ == '__main__':
     print('The velocity vector is: ', v)
 
     orb = util.rv2coe()
+
+    data = util.decode_tle('data/paz.tle')
+    print(f'Name: {data["name"]}')
+    print(f'Inclination: {data["inclination"]}')
+    print(f'RAAN: {data["raan"]}')
+    print(f'Eccentricity: {data["eccentricity"]}')
+    print(f'Argument of perigee: {data["arg_of_perigee"]}')
+    print(f'Mean anomaly: {data["mean_anomaly"]}')
+    print(f'Mean motion: {data["mean_motion"]}')
+    print(f'Epoch: {data["epoch"]}')
+    print(f'd_mean_motion: {data["d_mean_motion"]}')
+    print(f'dd_mean_motion: {data["dd_mean_motion"]}')
    
 
         

@@ -400,28 +400,25 @@ class KeplerPropagator:
         orb = [a, e, i, Omega, omega, nu]
 
         # Special cases
-        # Ecliptical orbit
+
         w_true = np.arccos(ecc[0] / e)
-        if ecc[1] < 0:
+        u = np.arccos(np.dot(N, R) / (n * r))
+        lambda_true = np.arccos(np.dot([1, 0, 0], R) / r)
+
+
+        if ecc[1] < 0: # Ecliptical orbit
             w_true = 2 * np.pi - w_true
             orb.append(['Elliptical equatorial', w_true])
-        else:
-            orb.append(['Elliptical', None])
-                
-        # Circular orbit
-        u = np.arccos(np.dot(N, R) / (n * r))
-        if R[2] < 0:
+
+        elif R[2] < 0: # Circular orbit
             u = 2 * np.pi - u
             orb.append(['Circular Inclined', u])
-        else:
-            orb.append(['Elliptical', None])
 
-        # Equatorial orbit
-        lambda_true = np.arccos(R[0] / r)
-        if R[1] < 0:
+        elif R[1] < 0: # Equatorial orbit
             lambda_true = 2 * np.pi - lambda_true
             orb.append(['Circular equatorial', lambda_true])
-        else:
+
+        else: # Non special case
             orb.append(['Elliptical', None])
 
         if special == 'Circular equatorial':
@@ -579,11 +576,56 @@ class KeplerPropagator:
             if orb[6][0] == 'Circular equatorial':
                 extra = E # lambda_true
             elif orb[6][0] == 'Circular Inclined':
-                entra = E  # U
+                extra = E  # U
+ 
+        R, V = self.coe2rv(p, e, i0, Omega0, omega0, nu,  [orb[6][0], extra])
 
-        R, V = self.coe2rv(p, e, i0, Omega0, omega0, nu, extra, orb[6][0])
+        return R, V
 
-    
+    def propagate(self, r0, v0, tf, dt, dn, ddn):
+        '''Propagate the orbit forward in time
+
+        Parameters
+        ----------
+        r0 : float
+            Initial position vector in km
+        v0 : float
+            Initial velocity vector in km/s
+        tf : float
+            Final time in seconds
+        dt : float
+            Time since periapsis in seconds
+        dn : float
+            First derivative of mean motion vector
+        ddn : float
+            Second derivative of mean motion vector 
+        Returns
+        -------
+        r : float
+            Final position vector in km
+        v : float
+            Final velocity vector in km/s
+        '''
+
+        r0 = np.array(r0)
+        v0 = np.array(v0)
+        
+        time = np.arange(0, tf, dt, dtype=float)
+
+        # vector of position and velocity
+
+        r = np.zeros((len(time)+1, 3))
+        v = np.zeros((len(time)+1, 3))
+
+        r[0, :] = r0
+        v[0, :] = v0
+
+        for i, t in enumerate(time):
+            r0, v0 = self.keplerP(r0, v0, dt, dn, ddn)
+            r[i+1 , :] = r0
+            v[i+1, :] = v0
+
+        return r, v
 
 
 if __name__ == "__main__":
@@ -626,7 +668,33 @@ if __name__ == "__main__":
 
     # Decode the TLE string
     tle_data = util.decode_tle('data/paz.tle')
-    print(tle_data)
+    
+    # Pkepler
+    print(f'Name: {tle_data["name"]}')
+    deg = np.pi/180
+
+    # r and v from coe
+    n = tle_data['mean_motion']/24/3600  # mean motion in rad/s
+    a = (earth.mu / n**2)**(1/3) # semi-major axis in km
+    p = a * (1 - tle_data['eccentricity']**2)
+
+    # true anomaly from mean anomaly
+    E = kepler.KepEqtnE(tle_data['mean_anomaly']*np.pi/180, tle_data['eccentricity'])
+    nu = kepler.anomaly2nu(tle_data['eccentricity'], E)
+
+    r0, v0 = kepler.coe2rv(p=p, e=tle_data['eccentricity'], i=tle_data['inclination']*deg, Omega=tle_data['raan']*deg, omega=tle_data['arg_of_perigee']*deg, nu=nu)
+    
+    r, v = kepler.propagate(r0, v0, 3600*2, 10, tle_data['d_mean_motion'], tle_data['dd_mean_motion'])
+    
+    # 3d plot
+    import matplotlib.pyplot as plt
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    ax.plot(r[:, 0], r[:, 1], r[:, 2])
+    ax.set_xlabel('X (km)')
+    ax.set_ylabel('Y (km)')
+    ax.set_zlabel('Z (km)')
+    plt.show()
 
 
 

@@ -4,15 +4,27 @@ from src.time_conv import ConvTime
 
 def rotation_matrix_1(angle):
     '''Rotation matrix around the x axis'''
-    return np.array([[1, 0, 0], [0, np.cos(angle), -np.sin(angle)], [0, np.sin(angle), np.cos(angle)]])
+    return np.array([
+        [1, 0, 0],
+        [0, np.cos(angle), np.sin(angle)],
+        [0, -np.sin(angle), np.cos(angle)]
+        ])
 
 def rotation_matrix_2(angle):
     '''Rotation matrix around the y axis'''
-    return np.array([[np.cos(angle), 0, np.sin(angle)], [0, 1, 0], [-np.sin(angle), 0, np.cos(angle)]])
+    return np.array([
+        [np.cos(angle), 0, -np.sin(angle)],
+        [0, 1, 0],
+        [np.sin(angle), 0, np.cos(angle)]
+    ])
 
 def rotation_matrix_3(angle):
     '''Rotation matrix around the z axis'''
-    return np.array([[np.cos(angle), -np.sin(angle), 0], [np.sin(angle), np.cos(angle), 0], [0, 0, 1]])
+    return np.array([
+        [np.cos(angle), np.sin(angle), 0],
+        [-np.sin(angle), np.cos(angle), 0],
+        [0, 0, 1]
+    ])
 
 def cart2efix(r, v, t, dt, t0):
     ''' Space fixed coordinate system to Earth fixed coordinate system
@@ -109,6 +121,43 @@ def ecef2latlong(r):
 
     return lat, lon
 
+def latlongH2ecef(phi, lam, h):
+    ''' Latitude, longitude and height to ECEF
+    Parameters
+    ----------
+    phi : float
+        Latitude in degrees
+    lam : float
+        Longitude in degrees
+    h : float   
+        Ellipsoidal height in m
+    Returns
+    -------
+    r : array_like  
+        Position vector in km ECEF
+    '''
+    # Earth Constants
+    a = 6378137.0  # equatorial radius (meters)
+    f = 1/298.257223563  # flattening of the ellipsoid
+    b = a * (1 - f)  # polar radius (meters)
+    e2 = 1 - (b/a)**2  # eccentricity squared
+
+    # Convert to radians
+    phi_rad = phi * np.pi / 180
+    lam_rad = lam * np.pi / 180
+
+    # Calculate the radius of curvature in the prime vertical N
+    N = a / np.sqrt(1 - e2 * np.sin(phi_rad)**2)
+
+    # Calculate the cartesian coordinates (X,Y,Z) in the ECEF system
+    X = (N + h) * np.cos(phi_rad) * np.cos(lam_rad)
+    Y = (N + h) * np.cos(phi_rad) * np.sin(lam_rad)
+    Z = ((1 - e2) * N + h) * np.sin(phi_rad)
+
+    # Vector of position in ECEF coordinates
+    return [X, Y, Z]
+
+
 def plot_ground_track(lat = None, long = None, map = None):
     ''' Plot ground track
     Parameters
@@ -182,6 +231,53 @@ def fk5(self, r_gcrf, v_gcrf, date, UTC, dUT1, dAT, xp, yp):
         pass
 
 
+def eci_to_ecef(r_ECI, v_ECI, t, theta):
+    """
+    Converts a position and velocity vector in ECI coordinates (r_ECI, v_ECI) 
+    to a position and velocity vector in ECEF coordinates (r_ECEF, v_ECEF).
+    
+    Args:
+        r_ECI (numpy.ndarray): Position vector in ECI coordinates [X, Y, Z] (meters).
+        v_ECI (numpy.ndarray): Velocity vector in ECI coordinates [Vx, Vy, Vz] (meters/second).
+        t (float): Time at which the transformation is desired (seconds).
+        theta (float): Greenwich sidereal time corresponding to time t (radians).
+    
+    Returns:
+        tuple: A tuple containing the position vector in ECEF coordinates [X, Y, Z] (meters) 
+        and the velocity vector in ECEF coordinates [Vx, Vy, Vz] (meters/second).
+    """
+    # Define the Earth's rotation matrix around the z-axis (theta)
+    Rz = np.array([
+        [np.cos(theta), np.sin(theta), 0],
+        [-np.sin(theta), np.cos(theta), 0],
+        [0, 0, 1]
+    ])
+    
+    # Calculate Greenwich Mean Time (GMT) from the sidereal time
+    GMT = theta/np.pi/12*t
+    
+    # Define the Earth's rotation matrix around the x-axis (incl. nutation)
+    delta_eps = 0.409105176667471 # mean obliquity of the ecliptic
+    delta_psi = -0.000226965 * np.sin(np.radians(125.04 - 1934.136*GMT)) # nutation in longitude
+    delta_eps = 0.00256 * np.cos(np.radians(125.04 - 1934.136*GMT)) # nutation in obliquity
+    Rx = np.array([
+        [1, 0, 0],
+        [0, np.cos(delta_eps), np.sin(delta_eps)],
+        [0, -np.sin(delta_eps), np.cos(delta_eps)]
+    ]) @ np.array([
+        [1, 0, 0],
+        [0, np.cos(delta_psi), np.sin(delta_psi)],
+        [0, -np.sin(delta_psi), np.cos(delta_psi)]
+    ])
+    
+    # Total rotation matrix
+    R = Rx @ Rz
+    
+    # Convert ECI position and velocity vectors to ECEF
+    r_ECEF = R @ r_ECI
+    v_ECEF = R @ v_ECI + np.cross(np.array([0, 0, 7.292115146706979e-5]), r_ECEF)
+    
+    return r_ECEF, v_ECEF
 
 
 
