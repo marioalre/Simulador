@@ -23,7 +23,7 @@ class Geomat:
 # La fuente es: https://www.ngdc.noaa.gov/IAGA/vmod/coeffs/igrf13coeffs.txt
 
 
-    def extraer_txt(self):
+    def get_txt(self):
         '''This function extracts the txt file from the indicated url'''
 
         if self.url is None:
@@ -50,7 +50,7 @@ class Geomat:
             if fileObj.is_file():
                 print('El archivo ya existe')
                 # We read the txt file
-                txt = self.leer_txt(filename)
+                txt = self.read_txt(filename)
             else:
                 print('El archivo no existe')
                 # Save the txt file
@@ -73,7 +73,7 @@ class Geomat:
         # We print a message to the user
         print(f"El archivo {filename} se ha guardado correctamente.")
 
-    def leer_txt(self, filemane):
+    def read_txt(self, filemane):
         '''This function reads the txt file'''
         # We open the file in read mode
         with open(filemane, 'r') as f:
@@ -126,11 +126,27 @@ class Geomat:
                 return url_txt
             else:
                 return None
+
+
+    def get_data(self, txt):
+        '''This function gets the data from the txt file'''
+        # We split the txt file by line
+        lines = txt.splitlines()
+        # We initialize the list of data
+        data = []
+        # We iterate over the lines
+        for line in lines:
+            # We split the line by space
+            parts = line.split()
+            # We add the parts to the list
+            data.append(parts)
+        # We return the list of data
+        return data
             
 
 if __name__ == '__main__':
     geomag = Geomat()
-    data = geomag.extraer_txt()
+    data = geomag.get_txt()
     print(data)
     # geomag.get_all_txt_from_url()
 
