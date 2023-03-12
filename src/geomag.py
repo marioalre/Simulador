@@ -192,7 +192,7 @@ class Geomat:
                 # The rate per year is the value of the last column
                 rate = self.data.iloc[jj, -1] 
 
-                gh[self.data['g/h'][jj]] = value_year1 + rate * (year - year1)
+                gh[self.data['g/h'][jj]] = value_year1 + rate * (year - float(year1))
 
         return gh
 
@@ -302,7 +302,7 @@ if __name__ == '__main__':
     data = geomag.get_txt()
     print(data)
 
-    print(geomag.get_gh_data(10, 4, '1950', 'b'))
+    print(geomag.get_gh_data(10, 4, '2022.5', 'b'))
     # geomag.get_all_txt_from_url()
 
 
