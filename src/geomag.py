@@ -345,6 +345,92 @@ class Geomat:
         Bmodule = np.linalg.norm(Bvector)
         
         return Bmodule, Bvector
+    
+    def centered_dipole(self, phi, theta, r, year=2020):
+        '''This function calculates the magnetic field due to a dipole
+        Parameters
+        ----------
+        phi : float
+            The co-elevation of the point where to calculate the magnetic field (in degrees)
+        theta : float
+            The  East longitude of the point where to calculate the magnetic field (in degrees)
+        r : float
+            The distance from the center of the Earth to the point where to calculate the magnetic field (in km)
+        Returns
+        -------
+        B : float
+            The magnetic field at the given location
+        '''
+
+        g10 = self.get_gh_norm(n = 1, m = 0, year = year, coeff = 'g')['g']
+
+        # Convert to radians
+        phi = np.radians(phi)
+        theta = np.radians(theta)
+
+        # Verify the limits of the input
+        if r < 0:
+            raise ValueError('The distance must be positive')
+        if r < self.Re:
+            raise ValueError('The distance must be higher than the radius of the Earth')
+        if phi <= -np.pi/2 or phi >= np.pi/2:
+            raise ValueError('The co-elevation must be between -90 and 90')
+        if theta <= -np.pi or theta >= np.pi:
+            raise ValueError('The longitude must be between -180 and 180')
+        
+        # Calculate the magnetic field
+
+        Br = 2 * (r/self.Re)**3 * g10 * np.cos(theta)
+        Btheta = (r/self.Re)**3 * g10 * np.sin(theta)
+        Bphi = 0
+
+        Bvector = np.array([Br, Btheta, Bphi])
+        Bmodule = np.linalg.norm(Bvector)
+        
+        return Bmodule, Bvector
+    
+    def simplified_dipole(self, phi, theta, r, year=2020):
+        '''This function calculates the magnetic field due to a dipole
+        Parameters
+        ----------
+        phi : float
+            The co-elevation of the point where to calculate the magnetic field (in degrees)
+        theta : float
+            The  East longitude of the point where to calculate the magnetic field (in degrees)
+        r : float
+            The distance from the center of the Earth to the point where to calculate the magnetic field (in km)
+        Returns
+        -------
+        B : float
+            The magnetic field at the given location
+        '''
+
+        g10 = self.get_gh_norm(n = 1, m = 0, year = year, coeff = 'g')['g']
+
+        # Convert to radians
+        phi = np.radians(phi)
+        theta = np.radians(theta)
+
+        # Verify the limits of the input
+        if r < 0:
+            raise ValueError('The distance must be positive')
+        if r < self.Re:
+            raise ValueError('The distance must be higher than the radius of the Earth')
+        if phi <= -np.pi/2 or phi >= np.pi/2:
+            raise ValueError('The co-elevation must be between -90 and 90')
+        if theta <= -np.pi or theta >= np.pi:
+            raise ValueError('The longitude must be between -180 and 180')
+        
+        # Calculate the magnetic field
+
+        Br = 2 * (r/self.Re)**3 * g10 * np.cos(theta)
+        Btheta = (r/self.Re)**3 * g10 * np.sin(theta)
+        Bphi = 0
+
+        Bvector = np.array([Br, Btheta, Bphi])
+        Bmodule = np.linalg.norm(Bvector)
+        
+        return Bmodule, Bvector
 
             
 if __name__ == '__main__':
