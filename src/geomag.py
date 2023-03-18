@@ -390,7 +390,7 @@ class Geomat:
         return Bmodule, Bvector
     
     def quadrupole(self, phi, theta, r, year=2020):
-        '''This function calculates the magnetic field due to a dipole
+        '''This function calculates the magnetic field quadrupole
         Parameters
         ----------
         phi : float
@@ -448,7 +448,74 @@ class Geomat:
         Bmodule = np.linalg.norm(Bvector)
 
         return Bmodule, Bvector
-            
+    
+    def octupole(self, phi, theta, r, year=2020):
+        '''This function calculates the magnetic field octupole
+        Parameters
+        ----------
+        phi : float
+            The co-elevation of the point where to calculate the magnetic field (in degrees)
+        theta : float
+            The  East longitude of the point where to calculate the magnetic field (in degrees)
+        r : float
+            The distance from the center of the Earth to the point where to calculate the magnetic field (in km)
+        Returns
+        -------
+        B : float
+            The magnetic field at the given location
+        '''
+        gh = self.get_gh_norm(n = 3, m = 3, year = year, coeff = 'b')
+        h33 = gh['h']
+        g33 = gh['g']
+        gh = self.get_gh_norm(n = 3, m = 2, year = year, coeff = 'b')
+        h32 = gh['h']
+        g32 = gh['g']
+        gh = self.get_gh_norm(n = 3, m = 1, year = year, coeff = 'b')
+        h31 = gh['h']
+        g31 = gh['g']
+        g30 = self.get_gh_norm(n = 3, m = 0, year = year, coeff = 'g')['g']
+
+        # Convert to radians
+        phi = np.radians(phi)
+        theta = np.radians(theta)
+
+        # Verify the limits of the input
+        if r < 0:
+            raise ValueError('The distance must be positive')
+        if r < self.Re:
+            raise ValueError('The distance must be higher than the radius of the Earth')
+        if phi <= -np.pi/2 or phi >= np.pi/2:
+            raise ValueError('The co-elevation must be between -90 and 90')
+        if theta <= -np.pi or theta >= np.pi:
+            raise ValueError('The longitude must be between -180 and 180')
+        
+        # Calculate the magnetic field
+
+        Bm , B = self.quadrupole(phi, theta, r, year)
+
+        Br_quad = B[0]
+        Btheta_quad = B[1]
+        Bphi_quad = B[2]
+
+        Br = Br_quad + 4 * (self.Re/r)**5 * (0.5*g30*(np.cos(2*theta) + 1/5) +0.5*(g31 * np.cos(phi) + \
+            h31 * np.sin(phi)) * np.sin(theta)*(np.cos(2*theta) - 3/5)+ 0.5*(g32 * np.cos(2*phi) + h32 * np.sin(2*phi)) * \
+            np.cos(theta)*(1-np.cos(2*theta)) + 0.5*(g33 * np.cos(3*phi) + h33 * np.sin(3*phi)) * np.sin(theta)*(1-np.cos(2*theta)))
+        
+        Btheta = Btheta_quad - 3*(self.Re/r)**5 * (0.5*g30*np.sin(theta)*(np.cos(2*theta)-3/5) + 0.5*(g31*np.cos(phi) + \
+            h31*np.sin(phi))*np.cos(theta)*(np.cos(2*theta)-2/5) - 0.5*(g32*np.cos(2*phi) + h32*np.sin(2*phi))*np.sin(theta)*\
+            (np.cos(2*theta) - 1/3) + 0.5*(g33*np.cos(3*phi) + h33*np.sin(3*phi))*np.cos(theta)*(1-np.cos(2*theta)))
+        
+        Bphi = Bphi_quad + (self.Re/r)**5 * (0.5*(g31*np.sin(phi) - h31*np.cos(phi))*(np.cos(2*theta)+3/5) + \
+            (g32*np.sin(2*phi) - h32*np.cos(2*phi))*np.sin(2*theta) + 3/2 * (g33*np.sin(3*phi) + \
+            h33*np.cos(3*phi))*(1-np.cos(2*theta)))
+        
+        Bvector = np.array([Br, Btheta, Bphi])
+        Bmodule = np.linalg.norm(Bvector)
+
+        return Bmodule, Bvector
+                                               
+
+
 if __name__ == '__main__':
     geomag = Geomat()
     data = geomag.get_txt()
@@ -459,6 +526,7 @@ if __name__ == '__main__':
     print(geomag.dipole(0, 0, 7000))
     print(geomag.centered_dipole(0, 0, 7000))
     print(geomag.quadrupole(0, 0, 7000))
+    print(geomag.octupole(0, 0, 7000))
 
     # geomag.gauss_norm_ass_leg_poly(2, np.pi/4)
 
