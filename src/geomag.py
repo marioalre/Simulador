@@ -389,7 +389,7 @@ class Geomat:
         
         return Bmodule, Bvector
     
-    def simplified_dipole(self, phi, theta, r, year=2020):
+    def quadrupole(self, phi, theta, r, year=2020):
         '''This function calculates the magnetic field due to a dipole
         Parameters
         ----------
@@ -404,8 +404,14 @@ class Geomat:
         B : float
             The magnetic field at the given location
         '''
+        gh = self.get_gh_norm(n = 2, m = 2, year = year, coeff = 'b')
+        h22 = gh['h']
+        g22 = gh['g']
+        gh = self.get_gh_norm(n = 2, m = 1, year = year, coeff = 'b')
+        h21 = gh['h']
+        g21 = gh['g']
+        g20 = self.get_gh_norm(n = 2, m = 0, year = year, coeff = 'g')['g']
 
-        g10 = self.get_gh_norm(n = 1, m = 0, year = year, coeff = 'g')['g']
 
         # Convert to radians
         phi = np.radians(phi)
@@ -423,15 +429,25 @@ class Geomat:
         
         # Calculate the magnetic field
 
-        Br = 2 * (r/self.Re)**3 * g10 * np.cos(theta)
-        Btheta = (r/self.Re)**3 * g10 * np.sin(theta)
-        Bphi = 0
+        Bm , B = self.dipole(phi, theta, r, year)
+
+        Br_dip = B[0]
+        Btheta_dip = B[1]
+        Bphi_dip = B[2]
+
+        Br = Br_dip + 3 * (self.Re/r)**4 * (0.5*g20*(np.cos(2*theta) + 1/3) +0.5*(g21 * np.cos(phi) + h21 * np.sin(phi)) * np.sin(2*theta) + \
+            0.5*(g22 * np.cos(2*phi) + h22 * np.sin(2*phi)) * (1- np.cos(2*theta)))
+        
+        Btheta = Btheta_dip + (self.Re/r)**4 * (g20*np.sin(2*theta) + (g21*np.cos(phi) + h21*np.sin(phi))*np.cos(2*theta) - \
+            (g22*np.cos(2*phi) + h22*np.sin(2*phi))*np.sin(2*theta))
+        
+        Bphi = Bphi_dip + (self.Re/r)**4 * ((g21*np.sin(phi) - h21*np.cos(phi)) * np.cos(theta) - \
+            2 * (g22*np.sin(2*phi) - h22*np.cos(2*phi)) * np.sin(theta))
 
         Bvector = np.array([Br, Btheta, Bphi])
         Bmodule = np.linalg.norm(Bvector)
-        
-        return Bmodule, Bvector
 
+        return Bmodule, Bvector
             
 if __name__ == '__main__':
     geomag = Geomat()
@@ -439,9 +455,11 @@ if __name__ == '__main__':
     print(data)
     
     print(geomag.Snm())
-    print(geomag.get_gh_data(10, 4, '2022.5', 'h'))
+    print(geomag.get_gh_data(1, 1, '2015.0', 'b'))
     print(geomag.dipole(0, 0, 7000))
+    print(geomag.centered_dipole(0, 0, 7000))
+    print(geomag.quadrupole(0, 0, 7000))
 
-    geomag.gauss_norm_ass_leg_poly(2, np.pi/4)
+    # geomag.gauss_norm_ass_leg_poly(2, np.pi/4)
 
 
