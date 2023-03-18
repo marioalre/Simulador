@@ -17,7 +17,7 @@ class Geomat:
     def __init__(self):
         '''This function initializes the class'''
         # We define the constants
-        self.a = 6378.137
+        self.Re = 6378.137
         self.url = self.get_all_txt_from_url()
   
 # Esta función extrae el archivo txt de la url indicada
@@ -197,25 +197,112 @@ class Geomat:
         return gh
 
 
-    def Snm(self, n, m):
+    def Snm(self, nm_max=13):
         '''This function calculates the Snm function
         Parameters
         ----------
-        n : int
-            The order of the spherical harmonic function
-        m : int
-            The degree of the spherical harmonic function
+        nm_max : int
+            The maximum value of n and m
+            n is the order of the spherical harmonic function
+            m is the degree of the spherical harmonic function
         Returns
         -------
         Snm : float
             The value of the Snm function
         '''
         
-        if m==0 and n==0:
-            Snm = 1
+        Snm = np.zeros((nm_max + 1, nm_max + 1))
 
-        pass
+        for m in range(nm_max + 1): # m is the degree of the spherical harmonic function
+            for n in range(nm_max + 1): # n is the order of the spherical harmonic function
+                if m==0 and n==0:
+                    Snm[n, m] = 1
+                elif m==0 and n>=1:
+                    Snm[n, m] = np.sqrt((2*n - 1)/(n)) * Snm[n-1, m]
+                elif m>=1 and n>=m:
+                    factor = np.sqrt(2)
+                    if m==1:
+                        Snm[n, m] = factor * np.sqrt((n - m + 1)/(n + m)) * Snm[n, m-1]
+                    else:
+                        Snm[n, m] = np.sqrt((n - m + 1)/(n + m)) * Snm[n, m-1] 
+                
+        return Snm
+    
+    def gauss_norm_ass_leg_poly(self, nm_max, theta):
+        '''This function calculates the associated Legendre polynomials with the normalization factor
+        Gauss's normalization factor is used. 
+        Recurrence relation for the associated Legendre polynomials is used.
+        Parameters
+        ----------
+        nm_max : int
+            The maximum value of n and m
+            n is the order of the spherical harmonic function
+            m is the degree of the spherical harmonic function
+        theta : float
+            The latitude in radians
+        Returns
+        -------
+        Pnm : array 
+            The value of the associated Legendre polynomials with the normalization factor
+        dPnm : array
+            The derivative of the associated Legendre polynomials with the normalization factor
+        '''
 
+        Pnm = np.zeros((nm_max + 1, nm_max + 1))
+        dPnm = np.zeros((nm_max + 1, nm_max + 1))
+
+        for m in range(nm_max + 1): # m is the degree of the spherical harmonic function
+            for n in range(nm_max + 1): # n is the order of the spherical harmonic function
+                if m==0 and n==0:
+                    Pnm[n, m] = 1
+                    dPnm[n, m] = 0
+                elif m==n:
+                    Pnm[n, m] = np.sin(theta) * Pnm[n-1, m-1]
+                    dPnm[n, m] = np.cos(theta) * Pnm[n-1, m-1] + np.sin(theta) * dPnm[n-1, m-1]
+                elif m>=0 and n>=1 and n>m:
+                    if n==1:
+                        Knm = 0   
+                    elif n > 1:
+                        Knm = ((n - 1)^2 - m^2)/((2*n-1)*(2*n - 3))
+                    
+                    Pnm[n, m] = np.cos(theta) * Pnm[n-1, m] - Knm * Pnm[n-2, m] #Posible error cuando n=m=1
+
+                    dPnm[n, m] = -np.sin(theta) * Pnm[n-1, m] + np.cos(theta) * dPnm[n-1, m] - Knm * dPnm[n-2, m]   
+
+        return Pnm, dPnm
+
+
+    
+    def get_gh_norm(self, n, m, year, coeff):
+        '''This function returns the normalization factor for a given n and m
+        Parameters
+        ----------
+        n : int
+            The order of the spherical harmonic function
+        m : int
+            The degree of the spherical harmonic function
+        year : int
+            The year for which to calculate the coefficients
+        coeff : str
+            The type of coefficient to return. Can be 'b' (both), 'g' or 'h'
+        Returns
+        -------
+        gh : dict
+            The value of the g or h coefficient
+        '''
+
+        Snm = self.Snm()
+
+        data = self.get_gh_data(n, m, year, coeff)
+
+        if coeff == 'b':
+            data['g'] = data['g'] * Snm[n, m]
+            data['h'] = data['h'] * Snm[n, m]
+        else:
+            data[coeff] = data[coeff] * Snm[n, m]
+
+        return data
+    
     def legendre_poly(nmax, theta):
         """
         Returns associated Legendre polynomials `P(n,m)` (Schmidt quasi-normalized)
@@ -278,31 +365,61 @@ class Geomat:
 
         return Pnm
 
-    def dipole(self, phi, theta, r):
+    def dipole(self, phi, theta, r, year=2020):
         '''This function calculates the magnetic field due to a dipole
         Parameters
         ----------
         phi : float
-            The co-elevation of the point where to calculate the magnetic field
+            The co-elevation of the point where to calculate the magnetic field (in degrees)
         theta : float
-            The  East longitude of the point where to calculate the magnetic field
+            The  East longitude of the point where to calculate the magnetic field (in degrees)
         r : float
-            The distance from the center of the Earth to the point where to calculate the magnetic field
+            The distance from the center of the Earth to the point where to calculate the magnetic field (in km)
         Returns
         -------
         B : float
             The magnetic field at the given location
         '''
+        gh = self.get_gh_norm(n = 1, m = 1, year = year, coeff = 'b')
+        h11 = gh['h']
+        g11 = gh['g']
+        g10 = self.get_gh_norm(n = 1, m = 0, year = year, coeff = 'g')['g']
+
+        # Convert to radians
+        phi = np.radians(phi)
+        theta = np.radians(theta)
+
+        # Verify the limits of the input
+        if r < 0:
+            raise ValueError('The distance must be positive')
+        if r < self.Re:
+            raise ValueError('The distance must be higher than the radius of the Earth')
+        if phi <= -np.pi/2 or phi >= np.pi/2:
+            raise ValueError('The co-elevation must be between -90 and 90')
+        if theta <= -np.pi or theta >= np.pi:
+            raise ValueError('The longitude must be between -180 and 180')
         
-        pass
+        # Calculate the magnetic field
+
+        Br = 2 * (r/self.Re)**3 * (g10 * np.cos(theta) + (g11 * np.cos(phi) + h11 * np.sin(phi)) * np.sin(theta))
+        Btheta = (r/self.Re)**3 * (g10 * np.sin(theta) - (g11 * np.cos(phi) + h11 * np.sin(phi)) * np.cos(theta))
+        Bphi = (r/self.Re)**3 * (-h11 * np.cos(phi) + g11 * np.sin(phi))
+
+        Bvector = np.array([Br, Btheta, Bphi])
+        Bmodule = np.linalg.norm(Bvector)
+        
+        return Bmodule, Bvector
 
             
 if __name__ == '__main__':
     geomag = Geomat()
     data = geomag.get_txt()
     print(data)
+    
+    print(geomag.Snm())
+    print(geomag.get_gh_data(10, 4, '2022.5', 'h'))
+    print(geomag.dipole(0, 0, 7000))
 
-    print(geomag.get_gh_data(10, 4, '2022.5', 'b'))
-    # geomag.get_all_txt_from_url()
+    geomag.gauss_norm_ass_leg_poly(2, np.pi/4)
 
 
