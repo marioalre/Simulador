@@ -271,8 +271,6 @@ class Geomat:
 
         return Pnm, dPnm
 
-
-    
     def get_gh_norm(self, n, m, year, coeff):
         '''This function returns the normalization factor for a given n and m
         Parameters
@@ -302,68 +300,6 @@ class Geomat:
             data[coeff] = data[coeff] * Snm[n, m]
 
         return data
-    
-    def legendre_poly(nmax, theta):
-        """
-        Returns associated Legendre polynomials `P(n,m)` (Schmidt quasi-normalized)
-        and the derivative :math:`dP(n,m)/d\\theta` evaluated at :math:`\\theta`.
-
-        Parameters
-        ----------
-        nmax : int, positive
-            Maximum degree of the spherical expansion.
-        theta : ndarray, shape (...)
-            Colatitude in degrees :math:`[0^\\circ, 180^\\circ]`
-            of arbitrary shape.
-
-        Returns
-        -------
-        Pnm : ndarray, shape (n, m, ...)
-            Evaluated values and derivatives, grid shape is appended as trailing
-            dimensions. `P(n,m)` := ``Pnm[n, m, ...]`` and `dP(n,m)` :=
-            ``Pnm[m, n+1, ...]``
-
-        """
-
-        costh = np.cos(np.radians(theta))
-        sinth = np.sqrt(1-costh**2)
-
-        Pnm = np.zeros((nmax+1, nmax+2) + costh.shape)
-        Pnm[0, 0] = 1  # is copied into trailing dimenions
-        Pnm[1, 1] = sinth  # write theta into trailing dimenions via broadcasting
-
-        rootn = np.sqrt(np.arange(2 * nmax**2 + 1))
-
-        # Recursion relations after Langel "The Main Field" (1987),
-        # eq. (27) and Table 2 (p. 256)
-        for m in range(nmax):
-            Pnm_tmp = rootn[m+m+1] * Pnm[m, m]
-            Pnm[m+1, m] = costh * Pnm_tmp
-
-            if m > 0:
-                Pnm[m+1, m+1] = sinth*Pnm_tmp / rootn[m+m+2]
-
-            for n in np.arange(m+2, nmax+1):
-                d = n * n - m * m
-                e = n + n - 1
-                Pnm[n, m] = ((e * costh * Pnm[n-1, m] - rootn[d-e] * Pnm[n-2, m])
-                            / rootn[d])
-
-        # dP(n,m) = Pnm(m,n+1) is the derivative of P(n,m) vrt. theta
-        Pnm[0, 2] = -Pnm[1, 1]
-        Pnm[1, 2] = Pnm[1, 0]
-        for n in range(2, nmax+1):
-            Pnm[0, n+1] = -np.sqrt((n*n + n) / 2) * Pnm[n, 1]
-            Pnm[1, n+1] = ((np.sqrt(2 * (n*n + n)) * Pnm[n, 0]
-                        - np.sqrt((n*n + n - 2)) * Pnm[n, 2]) / 2)
-
-            for m in np.arange(2, n):
-                Pnm[m, n+1] = (0.5*(np.sqrt((n + m) * (n - m + 1)) * Pnm[n, m-1]
-                            - np.sqrt((n + m + 1) * (n - m)) * Pnm[n, m+1]))
-
-            Pnm[n, n+1] = np.sqrt(2 * n) * Pnm[n, n-1] / 2
-
-        return Pnm
 
     def dipole(self, phi, theta, r, year=2020):
         '''This function calculates the magnetic field due to a dipole
