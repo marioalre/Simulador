@@ -168,6 +168,8 @@ class Geomat:
             if c == 2:
                 break
         
+        self.max_mn = self.data['n'].max()
+
         gh = {} # Dictionary to store the coefficients
 
         # check if the year is between the range of years in the data
@@ -183,6 +185,7 @@ class Geomat:
                     gh1 = self.data[str(year1)][jj]
                     gh2 = self.data[str(year2)][jj]
                     gh[self.data['g/h'][jj]] = (gh1 + (gh2 - gh1) * (year - year1) / 5)
+
         elif float(self.data.columns[-2]) < float(year) <= float(self.data.columns[-2]) + 5.0:
             # Extrapolate year data to get the coefficients
             for jj in index:
@@ -295,7 +298,8 @@ class Geomat:
 
         if coeff == 'b':
             data['g'] = data['g'] * Snm[n, m]
-            data['h'] = data['h'] * Snm[n, m]
+            if m != 0:
+                data['h'] = data['h'] * Snm[n, m]
         else:
             data[coeff] = data[coeff] * Snm[n, m]
 
@@ -337,9 +341,9 @@ class Geomat:
         
         # Calculate the magnetic field
 
-        Br = 2 * (r/self.Re)**3 * (g10 * np.cos(theta) + (g11 * np.cos(phi) + h11 * np.sin(phi)) * np.sin(theta))
-        Btheta = (r/self.Re)**3 * (g10 * np.sin(theta) - (g11 * np.cos(phi) + h11 * np.sin(phi)) * np.cos(theta))
-        Bphi = (r/self.Re)**3 * (-h11 * np.cos(phi) + g11 * np.sin(phi))
+        Br = 2 * (self.Re/r)**3 * (g10 * np.cos(theta) + (g11 * np.cos(phi) + h11 * np.sin(phi)) * np.sin(theta))
+        Btheta = (self.Re/r)**3 * (g10 * np.sin(theta) - (g11 * np.cos(phi) + h11 * np.sin(phi)) * np.cos(theta))
+        Bphi = (self.Re/r)**3 * (-h11 * np.cos(phi) + g11 * np.sin(phi))
 
         Bvector = np.array([Br, Btheta, Bphi])
         Bmodule = np.linalg.norm(Bvector)
@@ -380,8 +384,8 @@ class Geomat:
         
         # Calculate the magnetic field
 
-        Br = 2 * (r/self.Re)**3 * g10 * np.cos(theta)
-        Btheta = (r/self.Re)**3 * g10 * np.sin(theta)
+        Br = 2 * (self.Re/r)**3 * g10 * np.cos(theta)
+        Btheta = (self.Re/r)**3 * g10 * np.sin(theta)
         Bphi = 0
 
         Bvector = np.array([Br, Btheta, Bphi])
@@ -513,8 +517,189 @@ class Geomat:
         Bmodule = np.linalg.norm(Bvector)
 
         return Bmodule, Bvector
-                                               
+    
+    def magnetic_field(self, phi, theta, r, year=2020, N=3):
 
+        '''This function calculates the magnetic field at a given location
+        Parameters
+        ----------
+        phi : float
+            The co-elevation of the point where to calculate the magnetic field (in degrees)
+        theta : float
+            The  East longitude of the point where to calculate the magnetic field (in degrees)
+        r : float
+            The distance from the center of the Earth to the point where to calculate the magnetic field (in km)
+        N : int
+            The order of the magnetic field to calculate
+        Returns
+        -------
+        B : float
+            The magnetic field at the given location
+        '''
+       
+        # Convert to radians
+        phi = np.radians(phi)
+        theta = np.radians(theta)
+
+        # Verify the limits of the input
+        if r < 0:
+            raise ValueError('The distance must be positive')
+        if r < self.Re:
+            raise ValueError('The distance must be higher than the radius of the Earth')
+        if phi <= -np.pi/2 or phi >= np.pi/2:
+            raise ValueError('The co-elevation must be between -90 and 90')
+        if theta <= -np.pi or theta >= np.pi:
+            raise ValueError('The longitude must be between -180 and 180')
+
+
+        Pnm, dPnm = self.gauss_norm_ass_leg_poly(nm_max=N, theta=theta)
+
+
+        if not 0<N<self.max_mn:
+            raise ValueError('The order must be between 1 and 13')
+         
+
+        Br = 0
+        Btheta = 0
+        Bphi = 0
+
+        for n in range(1, N+1):
+            for m in range(0, N+1):
+                if n >= m:
+                    gh = self.get_gh_norm(n, m, year, 'b')
+                    g = gh['g']
+
+                    if m != 0:
+                        h = gh['h']                        
+                    else:
+                        h = 0
+
+                    Br += (self.Re / r)**(n+2)* (n + 1) * Pnm[n, m] * (g * np.cos(m*phi) + h*np.sin(m*phi))
+                    Btheta -= (self.Re/r)**(n+2) * dPnm[n, m] * (g * np.cos(m*phi) + h * np.sin(m*phi))
+
+                    if theta == 0 or theta == np.pi:
+                        Bphi = np.inf
+                    else:
+                        Bphi -= (self.Re/r)**(n+2) * (-m*g*np.sin(m*phi) + h*m*np.cos(m*phi)) * Pnm[n, m] / np.sin(theta)
+
+        Bvector = np.array([Br, Btheta, Bphi])
+        Bmodule = np.linalg.norm(Bvector)
+
+        return Bmodule, Bvector
+    
+    def transformation2NED(self, r, theta, phi, lambdaa, Bvector):
+        '''Transformation of the earth’s magnetic field from local tangent plane coordinate to NED
+        Parameters
+        ----------
+        r : float
+            The distance from the center of the Earth to the point where to calculate the magnetic field (in km)
+        theta : float
+            The  East longitude of the point where to calculate the magnetic field (in degrees)
+        phi : float
+            The co-elevation of the point where to calculate the magnetic field (in degrees)
+        lambda : float
+            Geodetic longitude of the point where to calculate the magnetic field (in degrees)
+        Returns
+        -------
+        B : float
+            The magnetic field at the given location in NED
+        '''
+
+        # Convert to radians
+
+
+        delta = 90 - theta
+        epsilon = lambdaa - delta
+
+        delta = np.radians(delta)
+        epsilon = np.radians(epsilon)
+
+        Br = Bvector[0]
+        Btheta = Bvector[1]
+        Bphi = Bvector[2]
+
+        BN = -Btheta * np.cos(delta) - Br * np.sin(delta)
+        BE = Bphi
+        BD = Btheta * np.sin(delta) - Br * np.cos(delta)
+
+        return np.array([BN, BE, BD])
+    
+    def transformation2inertial(self, Bvector, r, theta, phi, thetag = 0):
+        '''Transformation of the earth’s magnetic field from local tangent plane coordinate to inertial coordinates
+        Parameters
+        ----------
+        r : float
+            The distance from the center of the Earth to the point where to calculate the magnetic field (in km)
+        theta : float
+            The  East longitude of the point where to calculate the magnetic field (in degrees)
+        phi : float
+            The co-elevation of the point where to calculate the magnetic field (in degrees)
+        thetag : float
+            The declination of the Greenwich meridian (in degrees)
+        Bvector : array
+            The magnetic field vector r, phi, theta
+        Returns
+        -------
+        B : float
+            The magnetic field at the given location in inertial coordinates
+        '''
+        
+        # thetag indicate declination and celestial time in Greenwich
+
+        delta = 90 - phi
+        alpha = theta + thetag
+
+        delta = np.radians(delta)
+        alpha = np.radians(alpha)
+
+
+        Br = Bvector[0]
+        Btheta = Bvector[1]
+        Bphi = Bvector[2]
+
+        BxI = (Br * np.cos(delta) + Btheta * np.sin(delta)) * np.cos(alpha) - Bphi * np.sin(alpha)
+        ByI = (Br * np.cos(delta) + Btheta * np.sin(delta)) * np.sin(alpha) + Bphi * np.cos(alpha)
+        BzI = Br * np.sin(delta) - Btheta * np.cos(delta)
+
+        # geomagnetic field components in inertial coordinates
+
+        return np.array([BxI, ByI, BzI])
+    
+    def transformation2bodyframe(self, Bvector, orbparam, attiparam):
+        '''Transformation of the earth’s magnetic field from inertial coordinates to body frame
+        Parameters
+        ----------
+        Bvector : array
+            The magnetic field vector r, phi, theta
+        orbparam : array
+            The orbital parameters
+            - true anomaly (in degrees)
+            - Right ascension of ascending node (in degrees)
+            - inclination (in degrees)
+        attiparam : array
+            The attitude parameters
+            - roll (in degrees)
+            - pitch (in degrees)
+            - yaw (in degrees)
+        '''
+
+        # to radians
+        true_anomaly = np.radians(orbparam[0])
+        RAAN = np.radians(orbparam[1])
+        inclination = np.radians(orbparam[2])
+
+        roll = np.radians(attiparam[0])
+        pitch = np.radians(attiparam[1])
+        yaw = np.radians(attiparam[2])
+
+        Br = Bvector[0]
+        Btheta = Bvector[1]
+        Bphi = Bvector[2]
+
+        # Transformation to orbital frame
+        pass
+                    
+                              
 
 if __name__ == '__main__':
     geomag = Geomat()
@@ -522,12 +707,16 @@ if __name__ == '__main__':
     print(data)
     
     print(geomag.Snm())
-    print(geomag.get_gh_data(1, 1, '2015.0', 'b'))
-    print(geomag.dipole(0, 0, 7000))
-    print(geomag.centered_dipole(0, 0, 7000))
-    print(geomag.quadrupole(0, 0, 7000))
-    print(geomag.octupole(0, 0, 7000))
+    print(geomag.get_gh_data(2, 0, '2000.0', 'b'))
+    print(geomag.dipole(10, 10, 7000))
+    print(geomag.centered_dipole(10, 10, 7000))
+    print(geomag.quadrupole(10, 10, 7000))
+    print(geomag.octupole(10, 10, 7000))
 
-    # geomag.gauss_norm_ass_leg_poly(2, np.pi/4)
+
+    print(geomag.magnetic_field(10, 10, 7000, N=1))
+    # a, b = geomag.gauss_norm_ass_leg_poly(2, np.pi/4)
+
+
 
 
