@@ -665,7 +665,7 @@ class Geomat:
 
         return np.array([BxI, ByI, BzI])
     
-    def transformation2bodyframe(self, Bvector, orbparam, attiparam):
+    def transformation2orb(self, Bvector, orbparam, phi, theta, thetag = 0):
         '''Transformation of the earth’s magnetic field from inertial coordinates to body frame
         Parameters
         ----------
@@ -681,25 +681,102 @@ class Geomat:
             - roll (in degrees)
             - pitch (in degrees)
             - yaw (in degrees)
+        phi : float
+            The co-elevation of the point where to calculate the magnetic field (in degrees)
+        theta : float
+            The  East longitude of the point where to calculate the magnetic field (in degrees)
+        thetag : float
+            The declination of the Greenwich meridian (in degrees)
+        Returns
+        -------
+        B : float
+            The magnetic field at the given location in body frame
         '''
 
+        delta = 90 - phi
+        alpha = theta + thetag
+
         # to radians
-        true_anomaly = np.radians(orbparam[0])
+        delta = np.radians(delta)
+        alpha = np.radians(alpha) 
+
+        ta = np.radians(orbparam[0])
         RAAN = np.radians(orbparam[1])
         inclination = np.radians(orbparam[2])
-
-        roll = np.radians(attiparam[0])
-        pitch = np.radians(attiparam[1])
-        yaw = np.radians(attiparam[2])
 
         Br = Bvector[0]
         Btheta = Bvector[1]
         Bphi = Bvector[2]
 
         # Transformation to orbital frame
-        pass
-                    
-                              
+        BxO = (-np.sin(ta)*np.cos(RAAN) - np.cos(RAAN)*np.sin(RAAN)*np.cos(inclination))* \
+            (Br*np.cos(delta)*np.cos(alpha) + Btheta*np.sin(delta)*np.cos(alpha) - Bphi*np.sin(alpha)) + \
+            (-np.sin(ta)*np.sin(RAAN) + np.cos(ta)*np.cos(RAAN)*np.cos(inclination))* \
+            (Br*np.cos(delta)*np.sin(alpha) + Btheta*np.sin(delta)*np.sin(alpha) + Bphi*np.cos(alpha)) + \
+            (np.cos(ta)*np.sin(inclination))*(Br*np.sin(delta) - Btheta*np.cos(delta))
+        
+        ByO = -np.sin(inclination)*np.sin(RAAN)*(Br*np.cos(delta)*np.cos(alpha) + Btheta*np.sin(delta)*np.cos(alpha) - Bphi*np.sin(alpha)) + \
+                np.sin(inclination)*np.cos(RAAN)*(Br*np.cos(delta)*np.sin(alpha) + Btheta*np.sin(delta)*np.sin(alpha) + Bphi*np.cos(alpha)) + \
+                np.cos(inclination)*(Br*np.sin(delta) - Btheta*np.cos(delta))
+        
+        BzO = (-np.cos(ta)*np.cos(RAAN) - np.sin(RAAN)*np.cos(RAAN)*np.sin(inclination))* \
+            (Br*np.cos(delta)*np.cos(alpha) + Btheta*np.sin(delta)*np.cos(alpha) - Bphi*np.sin(alpha)) + \
+            (-np.cos(ta)*np.sin(RAAN) - np.sin(ta)*np.cos(RAAN)*np.cos(inclination))* \
+            (Br*np.cos(delta)*np.sin(alpha) + Btheta*np.sin(delta)*np.sin(alpha) + Bphi*np.cos(alpha)) + \
+            (np.sin(ta)*np.sin(inclination))*(Br*np.sin(delta) - Btheta*np.cos(delta))
+        
+        return np.array([BxO, ByO, BzO])
+    
+    def orb2body(self, BvectorOrb, attiparam):
+        '''Transformation of the earth’s magnetic field from inertial coordinates to body frame
+        Parameters
+        ----------
+        Bvector : array
+
+        '''
+        # to radians
+        roll = np.radians(attiparam[0])
+        pitch = np.radians(attiparam[1])
+        yaw = np.radians(attiparam[2])
+
+        BxO = BvectorOrb[0]
+        ByO = BvectorOrb[1]
+        BzO = BvectorOrb[2]
+        
+        # transforming the magnetic field to the satellite body frame
+
+        BxB = BxO*np.cos(yaw)*np.cos(pitch) + ByO*(np.cos(yaw)*np.sin(pitch)*np.sin(roll) - np.sin(yaw)*np.cos(roll)) + \
+            BzO*(np.cos(yaw)*np.sin(pitch)*np.cos(roll) + np.sin(yaw)*np.sin(roll))
+        ByB = BxO*np.sin(yaw)*np.cos(pitch) + ByO*(np.sin(yaw)*np.sin(pitch)*np.sin(roll) + np.cos(yaw)*np.cos(roll)) + \
+            BzO*(np.sin(yaw)*np.sin(pitch)*np.cos(roll) - np.cos(yaw)*np.sin(roll))
+        BzB = -BxO*np.sin(pitch) + ByO*np.cos(pitch)*np.sin(roll) + BzO*np.cos(pitch)*np.cos(roll)
+
+        return np.array([BxB, ByB, BzB])
+    
+    def linearOrb2body(self, BvectorOrb, attiparam):
+        '''Transformation of the earth’s magnetic field from inertial coordinates to body frame
+        Parameters
+        ----------
+        Bvector : array
+
+        '''
+        # to radians
+        roll = np.radians(attiparam[0])
+        pitch = np.radians(attiparam[1])
+        yaw = np.radians(attiparam[2])
+
+        BxO = BvectorOrb[0]
+        ByO = BvectorOrb[1]
+        BzO = BvectorOrb[2]
+        
+        # transforming the magnetic field to the satellite body frame
+
+        BxB = BxO - yaw*ByO - pitch*BzO
+        ByB = yaw*BxO + ByO - roll*BzO
+        BzB = -pitch*BxO + roll*ByO + BzO
+
+        return np.array([BxB, ByB, BzB])
+                                              
 
 if __name__ == '__main__':
     geomag = Geomat()
