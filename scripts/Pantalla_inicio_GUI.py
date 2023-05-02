@@ -1,6 +1,6 @@
 from tkinter import *
 import webbrowser
-from GUI import GUI
+from GUI import *
 
 def oppen_web():
     webbrowser.open_new("linkedin.com/in/mario-álvarez-redondo")
@@ -37,7 +37,7 @@ button.pack(side=BOTTOM, pady=20, padx=400)
 # Crear un botón
 
 def funcion():
-    GUI()
+    run()
     window.iconify()
 
 

@@ -121,6 +121,64 @@ def ecef2latlong(r):
 
     return lat, lon
 
+def ecef2latlongh(r_ecef):
+    '''
+    ECEF to latitude, longitude and height
+    Algorithm 12 from Vallado
+
+    Verified with the example 3.3 from Vallado
+    '''
+
+    e = 0.081819221456
+    Req = 6378.1363
+
+    r_delta_sat = np.sqrt(r_ecef[0]**2 + r_ecef[1]**2)
+
+    # Check quadrant
+
+    alpha = np.arcsin(r_ecef[1] / r_delta_sat)
+
+    lambda_ = alpha # first approximation
+
+    delta = np.arctan(r_ecef[2] / r_delta_sat)
+
+    # CI
+    long_gd = delta # geodetic longitude
+    r_delta = r_delta_sat
+    r_k = r_ecef[2]
+
+    long_old = 0
+
+    while np.abs(long_gd - long_old) > 1e-10:
+
+        long_old = long_gd
+        C = Req / np.sqrt(1 - e**2 * np.sin(long_old)**2)
+        S = Req* (1 - e**2) / np.sqrt(1 - e**2 * np.sin(long_old)**2)
+
+        # Newton-Raphson method to solve the equation
+        # long = np.arctan((r_k + C * e**2 * np.sin(long)) / r_delta)
+
+        long_gd = long_old - (np.tan(long_old) - (C*np.sin(long_old)*e**2+r_k)/r_delta) \
+            / (np.tan(long_old)**2 - (C*e**2*np.cos(long_old))/r_delta + 1)
+        
+    long_gc = np.arctan((1-e**2)*np.tan(long_gd))
+
+    print('Longitud geodésica: ', long_gd * 180 / np.pi)
+    print('Longitud geocéntrica: ', long_gc * 180 / np.pi)
+
+    if long_gd < np.pi/180:
+        hell = r_k / np.sin(long_gd) - S
+    else:
+        hell = r_delta / np.cos(long_gd) - C
+
+    print('Altitud: ', hell)
+    print('Latitud: ', lambda_ * 180 / np.pi)
+
+    return long_gd, long_gc, lambda_, hell
+
+def ecef2latlonh2()
+    
+
 def latlongH2ecef(phi, lam, h):
     ''' Latitude, longitude and height to ECEF
     Parameters
@@ -192,7 +250,7 @@ def plot_ground_track(lat = None, long = None, map = None):
 
     return map
 
-def fk5(self, r_gcrf, v_gcrf, date, UTC, dUT1, dAT, xp, yp):
+def fk5(r_gcrf, v_gcrf, date, UTC, dUT1, dAT, xp, yp):
         '''This function is used to convert the position and velocity vectors from GCRF to FK5
         celestial reference frame (GCRF) to terrestrial reference frame (ITRF).
         Parameters
@@ -280,5 +338,7 @@ def eci_to_ecef(r_ECI, v_ECI, t, theta):
     return r_ECEF, v_ECEF
 
 
-
+if __name__ == "__main__":
+    
+    ecef2latlongh([6524.834, 6862.875, 6448.296])
     

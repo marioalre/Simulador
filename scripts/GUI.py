@@ -72,7 +72,7 @@ class HomePage(tk.Frame):
 
         ## Filemenu
         filemenu = Menu(menubar, tearoff=0, relief=RAISED, activebackground="#026AA9")
-        menubar.add_cascade(label="File", menu=filemenu)
+        menubar.add_cascade(label="Menú", menu=filemenu)
         filemenu.add_command(label="Mission", command=lambda: parent.show_frame(parent.Mission))
         filemenu.add_command(label="Órbitas", command=lambda: parent.show_frame(parent.PreDetOrb))
         filemenu.add_command(label="Close", command=lambda: parent.show_frame(parent.HomePage))
@@ -111,7 +111,7 @@ class PreDetOrb(tk.Frame):
 
         ## Filemenu
         filemenu = Menu(menubar, tearoff=0, relief=RAISED, activebackground="#026AA9")
-        menubar.add_cascade(label="File", menu=filemenu)
+        menubar.add_cascade(label="Menú", menu=filemenu)
         filemenu.add_command(label="Mission", command=lambda: parent.show_frame(parent.Mission))
         filemenu.add_command(label="Close", command=lambda: parent.show_frame(parent.HomePage))
         filemenu.add_separator()
@@ -148,7 +148,7 @@ class Mission(tk.Frame):
 
         ## Filemenu
         filemenu = Menu(menubar, tearoff=0, relief=RAISED, activebackground="#026AA9")
-        menubar.add_cascade(label="File", menu=filemenu)
+        menubar.add_cascade(label="Menú", menu=filemenu)
         filemenu.add_command(label="Órbitas", command=lambda: parent.show_frame(parent.PreDetOrb))
         filemenu.add_command(label="Close", command=lambda: parent.show_frame(parent.HomePage))
         filemenu.add_separator()
@@ -169,6 +169,9 @@ class Mission(tk.Frame):
 
         return menubar
 
+def run():
+    app = App()
+    app.mainloop()
 
 if __name__ == "__main__":
     app = App()
