@@ -176,7 +176,8 @@ def ecef2latlongh(r_ecef):
 
     return long_gd, long_gc, lambda_, hell
 
-def ecef2latlonh2()
+def ecef2latlonh2():
+    pass
     
 
 def latlongH2ecef(phi, lam, h):
