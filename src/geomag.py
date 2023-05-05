@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup
 import re
 from pathlib import Path
 
-class Geomat:
+class Geomag:
     '''This class contains the functions necessary to calculate the magnetic field'''
 
     def __init__(self):
@@ -779,7 +779,7 @@ class Geomat:
                                               
 
 if __name__ == '__main__':
-    geomag = Geomat()
+    geomag = Geomag()
     data = geomag.get_txt()
     print(data)
     
