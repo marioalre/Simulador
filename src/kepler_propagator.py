@@ -1,4 +1,5 @@
 import numpy as np
+import math
 from src.utilities import Utilities
 
 class KeplerPropagator:
@@ -7,6 +8,8 @@ class KeplerPropagator:
         self.mu = body.mu
         self.radius = body.radius
         self.body = body
+        self.small = 1e-10
+        self.iterations = 50
 
     def c2c3fromchi(self, chi):
         '''Compute c2 and c3 from chi
@@ -136,8 +139,11 @@ class KeplerPropagator:
         ------- 
         E : float
             Eccentric anomaly in radians
+        M : float
+            Mean anomaly in radians
         '''
 
+        '''
         if e < 1:
             sinE = np.sqrt(1 - e ** 2) * np.sin(nu) / (1 + e * np.cos(nu))
             cosE = (e + np.cos(nu)) / (1 + e * np.cos(nu))
@@ -153,11 +159,50 @@ class KeplerPropagator:
 
             E = np.arcsinh(sinhH)
 
-        return E
+        '''
 
-    def anomaly2nu(self, e, E, extra=None):
+
+        E = 999999.9
+        m = 999999.9
+        small = 0.00000001
+
+        # circular
+        if abs(e) < small:
+            m = nu
+            E = nu
+        else:
+            # elliptical
+            if e < 1.0 - small:
+                sine = (np.sqrt(1.0 - e**2) * np.sin(nu)) / (1.0 + e*np.cos(nu))
+                cose = (e + np.cos(nu)) / (1.0 + e*np.cos(nu))
+                E = np.arctan2(sine, cose)
+                m = E - e*np.sin(E)
+            else:
+                # hyperbolic
+                if e > 1.0 + small:
+                    if e > 1.0 and abs(nu) + 0.00001 < math.pi - np.arccos(1.0 / e):
+                        sine = (np.sqrt(e**2 - 1.0) * np.sin(nu)) / (1.0 + e*np.cos(nu))
+                        E = math.asinh(sine)
+                        m = e*np.sinh(E) - E
+                else:
+                    # parabolic
+                    if abs(nu) < 168.0*math.pi/180.0:
+                        E = np.tan(nu*0.5)
+                        m = E + (E**3)/3.0
+
+        if e < 1.0:
+            m = m % (2.0*np.pi)
+            if m < 0.0:
+                m = m + 2.0*np.pi
+            E = E % (2.0*np.pi)
+
+        return E, m
+
+    def anomaly2nu2(self, e, E, extra=None):
         '''Compute true anomaly from eccentric anomaly
-        A.6
+
+        DEPRECATED
+
         Parameters
         ----------
         e : float
@@ -193,77 +238,88 @@ class KeplerPropagator:
             nu = np.arcsin(sinnu)
 
         return nu
-
-    def keplerCOE(self, R0, V0, dt):
-        '''Compute the classical orbital elements from the initial state and time
-        A.7
+    
+    def anomaly2nu(self, e, M):
+        '''Compute true anomaly from eccentric anomaly
+        Vallado
         Parameters
         ----------
-        r0 : numpy.array
-            Initial position vector in km
-        v0 : numpy.array
-            Initial velocity vector in km/s
-        dt : float
-            Time since periapsis in seconds
+        e : float
+            Eccentricity
+        M : float
+            Mean anomaly in radians
         Returns
         -------
-        r : numpy.array
-            Position vector in km
-        v : numpy.array
-            Velocity vector in km/s
+        nu : float
+            True anomaly in radians
+        E : float
+            Eccentric anomaly in radians
         '''
-        r0 = np.linalg.norm(R0)
-        v0 = np.linalg.norm(V0)
-        orb = self.rv2coe(R0, V0, special=None)
 
-        a = orb[0]
-        e = orb[1]
-        i = orb[2]
-        Omega = orb[3]
-        omega = orb[4]
-        nu = orb[5]
+        small = self.small
+        numiter = self.iterations
 
-        if e != 0:
-            E = self.nu2anomaly(e, nu)
+        # Hyperbolic
+        if (e - 1) > small:
+            if e < 1.6:
+                if (M < 0.0 and M > -np.pi) or M > np.pi:
+                    E = M - e
+                else:
+                    E = M + e
+            else:
+                if e < 3.6 and np.abs(M) > np.pi:
+                    E = M - np.sign(M) * e
+                else:
+                    E = M / (e - 1)
+            
+            cont = 0
+            E1 = E + (M-e*np.sinh(E)-E) / (e*np.cosh(E)-1.0)
+
+            while np.abs(E1-E) > small and cont < numiter:
+                E = E1
+                E1 = E + (M-e*np.sinh(E)-E) / (e*np.cosh(E)-1.0)
+                cont += 1
+
+            sinnu = -np.sqrt(e ** 2 - 1) * np.sinh(E) / (e - np.cosh(E))
+            cosnu = (np.cosh(E) - e) / (1 - e*np.cosh(E))
+
+            nu = np.arctan2(sinnu, cosnu)
+
         else:
-            for i in [6, 7]:
-                if orb[i][1] is not None:
-                    E = orb[i][1]
-                    break
+            # Parabolic
+            if np.abs(e -1) < small:
+                s = 0.5 * (np.pi/2 - np.arctan(1.5*M))
+                w = np.arctan(np.tan(s)**(1/3))
+                E0 = 2.0* 1/np.tan(2.0*w)
+                nu = 2.0*np.arctan(E0)
+            else:
+                # Elliptical
+                if e > small:
+                    if (M<0.0 and M>-np.pi) or M>np.pi:
+                        E = M - e
+                    else:
+                        E = M + e
 
-        # Mean velocity
-        # n = np.sqrt(self.mu / a ** 3)
-        n = np.sqrt(self.mu / a ** 3)
+                    cont = 0
+                    E1 = E + (M+e*np.sin(E)-E) / (1.0-e*np.cos(E))
 
-        if e < 1.0:
-            M = E - e * np.sin(E)
-            M = M + n*dt
+                    while np.abs(E1-E) > small and cont < numiter:
+                        E = E1
+                        E1 = E + (M+e*np.sin(E)-E) / (1.0-e*np.cos(E))
+                        cont += 1
+                    
+                    E = E1
 
-            E = self.KepEqtnE(M, e)
-        elif e == 1:
-            H = np.cross(R0, V0)
-            p = np.linalg.norm(H) ** 2 / self.mu
-            M = E + E**3 / 3
+                    sinnu = np.sqrt(1.0-e**2) * np.sin(E) / (1.0-e*np.cos(E))
+                    cosnu = (np.cos(E)-e) / (1.0-e*np.cos(E))
+                    nu = np.arctan2(sinnu, cosnu)
 
-            E = self.KepEqtnP(dt, p)
-        else:
-            M = e*np.sinh(E) - E
-            M = M + n*dt
+                else:
+                    cont = 0
+                    nu = M
+                    E = M
 
-            E = self.KepEqtnH(M, e)
-
-        if e != 0:
-            self.nu = self.anomaly2nu(e, E)
-        else:
-            for i in [6, 7]:
-                if orb[i][1] is not None:
-                    orb[i][1] = E
-                    break
-
-        # Compute the position and velocity vectors
-        r, v = self.coe2rv(a, e, i, Omega, omega, nu)
-
-        return r, v
+        return nu, E
 
     def kepler(self, R, V, dt):
         '''Compute the classical orbital elements from the initial state and time
@@ -334,9 +390,11 @@ class KeplerPropagator:
 
         return R_final, V_final
 
-    def rv2coe(self, R, V, special=None):
+    def rv2coe2(self, R, V, special=None):
         '''Compute the classical orbital elements from the position and velocity
-        A.8
+        
+        DEPRECATED
+
         Parameters
         ----------
         R : numpy.array
@@ -399,6 +457,13 @@ class KeplerPropagator:
 
         orb = [a, e, i, Omega, omega, nu]
 
+        print('a =', a, 'km')
+        print('e =', e)
+        print('i =', i * 180 / np.pi, 'º')
+        print('Omega =', Omega * 180 / np.pi, 'º')
+        print('omega =', omega * 180 / np.pi, 'º')
+        print('nu =', nu * 180 / np.pi, 'º')
+
         # Special cases
 
         w_true = np.arccos(ecc[0] / e)
@@ -429,10 +494,255 @@ class KeplerPropagator:
             print('Elliptical equatorial orbit')
 
         return orb
+    
+    def rv2coe(self, R, V):
+        '''Compute the classical orbital elements from the position and velocity
+        A.8
+        Parameters
+        ----------
+        R : numpy.array
+            Position vector in km
+        V : numpy.array
+            Velocity vector in km/s
+        Returns
+        -------
+        p : float
+            Semi-l
+        a : float
+            Semi-major axis in km
+        e : float
+            Eccentricity
+        i : float
+            Inclination in radians
+        Omega : float
+            Right ascension of the ascending node in radians
+        omega : float
+            Argument of periapsis in radians
+        nu : float
+            True anomaly in radians
+        arglat : float
+            Argument of latitude in radians
+        lonper : float
+            Longitude of periapsis in radians
+        truelon : float
+            True longitude in radians
+        M : float
+            Mean anomaly in radians
+        '''
+        
 
-    def coe2rv(self, p, e, i, Omega, omega, nu, extra=None):
+        small = self.small
+        
+        r = np.linalg.norm(R)
+        v = np.linalg.norm(V)
+
+        H = np.cross(R, V)
+        h = np.linalg.norm(H)
+
+        if h >= small:
+            N = np.array([-H[1], H[0], 0.0])
+            n = np.linalg.norm(N)
+
+            ecc = np.dot((v**2 - self.mu / r) , R) / self.mu - np.dot(np.dot(R, V) , V) / self.mu
+            e = np.linalg.norm(ecc)
+
+            eta = v**2/2 - self.mu/r
+
+            if abs(eta) > small:
+                a = -self.mu / (2 * eta)
+            else:
+                a = np.inf
+
+            p = h**2 / self.mu
+
+            i = np.arccos(H[2] / h)
+
+            case = 'ei'
+            if e < small:
+                if i < small or np.abs(np.pi - i) < small:
+                    case = 'ce'
+                else:
+                    case = 'ci'
+            else:
+                if i < small or np.abs(np.pi - i) < small:
+                    case = 'ee'
+
+            # right ascension of ascending node
+            if n > small:
+                temp = N[0] / n
+                if abs(temp) > 1:
+                    temp = np.sign(temp)
+                Omega = np.arccos(temp)
+
+                if N[1] < 0:
+                    Omega = 2 * np.pi - Omega
+
+            else:
+                Omega = np.nan
+
+            # argument of perigee
+            if case == 'ei':
+                omega = np.arccos(np.dot(N, ecc) / (n * e)) 
+
+                if ecc[2] < 0:
+                    omega = 2 * np.pi - omega
+
+            else :
+                omega = np.nan
+
+            # true anomaly
+            if case[0] == 'e':
+                nu = np.arccos(np.dot(ecc, R) / (e * r))
+
+                if np.dot(R, V) < 0:
+                    nu = 2 * np.pi - nu
+
+            else:
+                nu = np.nan
+
+            # argument of latitude - circular inclined
+            if case == 'ci' or case == 'ei':
+                arglat = np.arccos(np.dot(N, R) / (n * r)) 
+                
+                if R[2] < 0:
+                    arglat = 2 * np.pi - arglat
+                m = arglat
+            else:
+                arglat = np.nan
+
+            # longitude of perigee - elliptical equatorial
+  
+            if e > small and case == 'ee':
+                temp = ecc[0] / e
+
+                if abs(temp) > 1:
+                    temp = np.sign(temp)
+                lonper = np.arccos(temp)
+
+                if ecc[1] < 0:
+                    lonper = 2 * np.pi - lonper
+
+                if i > np.pi/2:
+                    lonper = 2 * np.pi - lonper
+
+            else:
+                lonper = np.nan
+
+            # true longitude - circular equatorial
+
+            if r > small and case == 'ce':
+                temp = R[0] / r
+
+                if np.abs(temp) > 1:
+                    temp = np.sign(temp)
+                truelon = np.arccos(temp)
+
+                if R[1] < 0:
+                    truelon = 2 * np.pi - truelon
+
+                if i > np.pi/2:
+                    truelon = 2 * np.pi - truelon
+            else:
+                truelon = np.nan
+
+            E, M = self.nu2anomaly(e, nu)
+
+        else:
+            p = np.nan
+            a = np.nan
+            e = np.nan
+            i = np.nan
+            Omega = np.nan
+            omega = np.nan
+            nu = np.nan
+            arglat = np.nan
+            lonper = np.nan
+            truelon = np.nan
+            M = np.nan
+
+
+        return [p, a, e, i, Omega, omega, nu, arglat, lonper, truelon, M]
+
+    def coe2rv(self, p, a, e, i, Omega, omega, nu, arglat, lonper, truelon):
         '''Compute the position and velocity vectors from the classical orbital elements
         A.9
+        Parameters
+        ----------
+        p : float
+            Semi-l
+        a : float
+            Semi-major axis in km
+        e : float
+            Eccentricity
+        i : float
+            Inclination in radians
+        Omega : float
+            Right ascension of the ascending node in radians
+        omega : float
+            Argument of periapsis in radians
+        nu : float
+            True anomaly in radians
+        arglat : float
+            Argument of latitude in radians
+        lonper : float
+            Longitude of periapsis in radians
+        truelon : float
+            True longitude in radians
+        Returns
+        -------
+        r : numpy.array
+            Position vector in km
+        v : numpy.array
+            Velocity vector in km/s
+        '''
+        small = self.small
+
+        if e < small:
+            # circular equatorial
+            omega = 0
+            if i < small or np.abs(np.pi - i) < small:
+                Omega = 0
+                nu = truelon
+            else:
+                # circular inclined
+                nu = arglat
+        else:
+            # elliptical equatorial
+            if i < small or np.abs(np.pi - i) < small:
+
+                Omega = 0
+                omega = lonper
+
+        
+        r = np.array([p * np.cos(nu) / (1 + e * np.cos(nu)), p * np.sin(nu) / (1 + e * np.cos(nu)), 0]) 
+        v = np.array([-np.sqrt(self.mu / p) * np.sin(nu), np.sqrt(self.mu / p) * (e + np.cos(nu)), 0])
+
+        # Rotate to the correct frame
+
+        R1 = np.array([[np.cos(Omega), np.sin(Omega), 0],
+                       [-np.sin(Omega), np.cos(Omega), 0],
+                       [0, 0, 1]])
+
+        R2 = np.array([[1, 0, 0],
+                       [0, np.cos(i), np.sin(i)],
+                       [0, -np.sin(i), np.cos(i)]])
+
+        R3 = np.array([[np.cos(omega), np.sin(omega), 0],
+                       [-np.sin(omega), np.cos(omega), 0],
+                       [0, 0, 1]])
+
+        rotation_matrix = np.transpose(R1) @ np.transpose(R2) @ np.transpose(R3)
+
+        r = rotation_matrix @ r
+        v = rotation_matrix @ v
+
+        return r, v
+
+    def coe2rv2(self, p, e, i, Omega, omega, nu, extra=None):
+        '''Compute the position and velocity vectors from the classical orbital elements
+        
+        DEPRECATED
+
         Parameters
         ----------
         p : float
@@ -502,85 +812,62 @@ class KeplerPropagator:
 
         return r, v
 
-    def keplerP(self, R0, V0, dt, dn0, ddn0):
-        '''Propagate the orbit using the Kepler equations
-        including the perturbations 
-        Parameters
-        R0 : numpy.array
-            Initial position vector in km
-        V0 : numpy.array
-            Initial velocity vector in km/s
-        dt : float
-            Time to propagate in seconds
-        dn0 : numpy.array
-            Initial perturbation vector in km/s
-        ddn0 : numpy.array
-            Initial perturbation vector in km/s^2
-        Returns
-        -------
-        R : numpy.array
-            Position vector in km
-        V : numpy.array
-            Velocity vector in km/s
-        '''
-        
-        orb = self.rv2coe(R0, V0) # tener en cuenta casos especiales
 
-        a0 = orb[0]
-        e0 = orb[1]
-        i0 = orb[2]
-        Omega0 = orb[3]
-        omega0 = orb[4]
-        nu0 = orb[5]
+    def Pkepler(self, ro, vo, dtsec, ndot, nddot):
+        re = self.radius         # km
+        mu = self.mu      # km3/s2
+        j2 = self.body.J2      # km5/s2
 
-        # Special cases
-        if orb[6][0] == 'Circular Inclined':
-            extra = orb[6][1]
-        elif orb[6][0]== 'Circular equatorial':
-            extra = orb[6][1]
-        elif orb[6][0] == 'Elliptical equatorial':
-            extra = orb[6][1]
+        [p, a, e, i, Omega, omega, nu, arglat, truelon, lonper, m] = self.rv2coe(ro, vo)
+        n = np.sqrt(mu/(a**3))
+
+        # ------------- find the value of j2 perturbations -------------
+        j2op2 = (n*1.5*re**2*j2) / (p**2)
+        Omegadot = -j2op2 * np.cos(i)
+        omegadot = j2op2 * (2.0-2.5*np.sin(i)**2)
+        mdot = n
+
+        a = a - 2.0*ndot*dtsec * a / (3.0*n)
+        e = e - 2.0*(1.0 - e)*ndot*dtsec / (3.0*n)
+        p = a*(1.0 - e**2)
+
+        # ----- update the orbital elements for each orbit type --------
+        small = 1e-10
+        if e < small:
+            # circular equatorial 
+            if (i < small) or (abs(i-np.pi) < small):
+                truelondot = Omegadot + omegadot + mdot
+                truelon = truelon + truelondot * dtsec
+                truelon = np.remainder(truelon, np.pi*2)
+            else:
+                #circular inclined  
+                Omega = Omega + Omegadot * dtsec
+                Omega = np.remainder(Omega, np.pi*2)
+                arglatdot = omegadot + mdot
+                arglat = arglat + arglatdot * dtsec
+                arglat = np.remainder(arglat, np.pi*2)
         else:
-            print('No special case')
+            # elliptical, parabolic, hyperbolic equatorial 
+            if (i < small) or (abs(i-np.pi) < small):
+                lonperdot = Omegadot + omegadot
+                lonper = lonper + lonperdot * dtsec
+                lonper = np.remainder(lonper, np.pi*2)
+                m = m + mdot*dtsec + ndot*dtsec**2 + nddot*dtsec**3
+                m = np.remainder(m, np.pi*2)
+                [e0, nu] = self.anomaly2nu(e, m)
+            else:
+                # elliptical, parabolic, hyperbolic inclined 
+                Omega = Omega + Omegadot * dtsec
+                Omega = np.remainder(Omega, np.pi*2)
+                omega = omega + omegadot * dtsec
+                omega = np.remainder(omega, np.pi*2)
+                m = m + mdot*dtsec + ndot*dtsec**2 + nddot*dtsec**3
+                m = np.remainder(m, np.pi*2)
+                [e0, nu] = self.anomaly2nu(e, m)
 
-        if e0 != 0:
-            E0 = self.nu2anomaly(nu0, e0)
-        else:
-            if orb[6][0] == 'Circular equatorial':
-                E0 = extra  # lambda_true
-            elif orb[6][0] == 'Circular Inclined':
-                E0 = extra # U
+        # Use coe2rv to find new
 
-        M0 = E0 - e0 * np.sin(E0)
-        p0 = a0 * (1 - e0**2)
-        n0 = np.sqrt(self.mu / a0**3)
-
-        # Perturbations
-        a = a0 - 2/3 * a0/n0 * dn0 * dt
-
-        e = e0 - 2/3 * (1 - e0)/n0 * dn0 * dt
-
-        Omega0 = Omega0 - 3/2 * n0 * self.radius**2 * self.body.J2 / p0**2 * np.cos(i0) * dt
-
-        omega0 = omega0 + 3/4 * n0 * self.radius**2 * self.body.J2 / p0**2 * (4 - 5 * np.sin(i0)**2) * dt
-
-        M  = M0 + n0 * dt + 1/2 * dn0* dt**2 + 1/6 * ddn0 * dt**3
-
-        p = a * (1 - e**2)
-
-        E = self.KepEqtnE(M, e)
-
-        if e != 0:
-            nu = self.anomaly2nu(E, e)
-        else:
-            if orb[6][0] == 'Circular equatorial':
-                extra = E # lambda_true
-            elif orb[6][0] == 'Circular Inclined':
-                extra = E  # U
- 
-        R, V = self.coe2rv(p, e, i0, Omega0, omega0, nu,  [orb[6][0], extra])
-
-        return R, V
+        return self.coe2rv(p, a, e, i, Omega, omega, nu, arglat, lonper, truelon)
 
     def propagate(self, r0, v0, tf, dt, dn, ddn):
         '''Propagate the orbit forward in time
@@ -621,7 +908,7 @@ class KeplerPropagator:
         v[0, :] = v0
 
         for i, t in enumerate(time):
-            r0, v0 = self.keplerP(r0, v0, dt, dn, ddn)
+            r0, v0 = self.Pkepler(r0, v0, dt, dn, ddn)
             r[i+1 , :] = r0
             v[i+1, :] = v0
 
@@ -630,7 +917,7 @@ class KeplerPropagator:
 
 if __name__ == "__main__":
 
-    from CelestialBodies import CelestialBodies
+    from src.CelestialBodies import CelestialBodies
 
     # Earth
     earth = CelestialBodies()
@@ -642,7 +929,7 @@ if __name__ == "__main__":
     
     print(orb)
 
-    r, v = kepler.coe2rv(11067.79, 0.83285, 87.87 * np.pi/180, 227.89 * np.pi/180, 53.38 * np.pi/180, 92.335 * np.pi/180)
+    r, v = kepler.coe2rv(orb[0], orb[1], orb[2], orb[3], orb[4], orb[5],orb[6], orb[7], orb[8], orb[9])
     print(r)
     print(v)
 
@@ -653,16 +940,16 @@ if __name__ == "__main__":
     H = kepler.KepEqtnH(235.4*np.pi/180, 2.4)
     print(H)
 
+    print(kepler.anomaly2nu2(0.4, 235.4*np.pi/180))
+
 
     R = np.array([1131.340, -2282.343, 6672.423])
     V = np.array([-5.64305, 4.30333, 2.42879])
     dt = 40 * 60
 
     r, v = kepler.kepler(R, V, dt)
-    r1, v1 = kepler.keplerCOE(R, V, dt)
-    print(r, r1)
-    print(v, v1)
-
+    print(r)
+    print(v)
 
     util = Utilities(earth)
 
@@ -680,14 +967,29 @@ if __name__ == "__main__":
 
     # true anomaly from mean anomaly
     E = kepler.KepEqtnE(tle_data['mean_anomaly']*np.pi/180, tle_data['eccentricity'])
-    nu = kepler.anomaly2nu(tle_data['eccentricity'], E)
+    nu, E = kepler.anomaly2nu(tle_data['eccentricity'], E)
 
-    r0, v0 = kepler.coe2rv(p=p, e=tle_data['eccentricity'], i=tle_data['inclination']*deg, Omega=tle_data['raan']*deg, omega=tle_data['arg_of_perigee']*deg, nu=nu)
+    r0, v0 = kepler.coe2rv(p=p,
+                           a=a, 
+                           e=tle_data['eccentricity'], 
+                           i=tle_data['inclination']*deg, 
+                           Omega=tle_data['raan']*deg, 
+                           omega=tle_data['arg_of_perigee']*deg, 
+                           nu=nu,
+                           arglat=0,
+                           lonper=0,
+                           truelon=0)
     
-    r, v = kepler.propagate(r0, v0, 3600*2, 10, tle_data['d_mean_motion'], tle_data['dd_mean_motion'])
+    r, v = kepler.Pkepler(R, V, dt, tle_data['d_mean_motion'], tle_data['dd_mean_motion'])
+
+    print(r)
+    print(v)
+
+    # r, v = kepler.propagate(r0, v0, 3600*60, 3600, tle_data['d_mean_motion'], tle_data['dd_mean_motion'])
     
     # 3d plot
     import matplotlib.pyplot as plt
+    
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     ax.plot(r[:, 0], r[:, 1], r[:, 2])
@@ -695,6 +997,3 @@ if __name__ == "__main__":
     ax.set_ylabel('Y (km)')
     ax.set_zlabel('Z (km)')
     plt.show()
-
-
-
