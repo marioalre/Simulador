@@ -663,15 +663,13 @@ class KeplerPropagator:
 
         return [p, a, e, i, Omega, omega, nu, arglat, lonper, truelon, M]
 
-    def coe2rv(self, p, a, e, i, Omega, omega, nu, arglat, lonper, truelon):
+    def coe2rv(self, p, e, i, Omega, omega, nu, arglat, lonper, truelon):
         '''Compute the position and velocity vectors from the classical orbital elements
         A.9
         Parameters
         ----------
         p : float
-            Semi-l
-        a : float
-            Semi-major axis in km
+            Semi-l 
         e : float
             Eccentricity
         i : float
@@ -867,7 +865,7 @@ class KeplerPropagator:
 
         # Use coe2rv to find new
 
-        return self.coe2rv(p, a, e, i, Omega, omega, nu, arglat, lonper, truelon)
+        return self.coe2rv(p, e, i, Omega, omega, nu, arglat, lonper, truelon)
 
     def propagate(self, r0, v0, tf, dt, dn, ddn):
         '''Propagate the orbit forward in time
@@ -907,11 +905,60 @@ class KeplerPropagator:
         r[0, :] = r0
         v[0, :] = v0
 
-        for i, t in enumerate(time):
+        for i, dt in enumerate(time):
             r0, v0 = self.Pkepler(r0, v0, dt, dn, ddn)
             r[i+1 , :] = r0
             v[i+1, :] = v0
 
+        return r, v
+    
+    def RVFromTLE(self, tle_file):
+        '''Calculate the position and velocity vectors from TLE data.
+        Parameters
+        ----------
+        tle_data : dict
+            Dictionary containing the TLE data.
+        Returns
+        -------
+        R : numpy array
+            Position vector in km.
+        V : numpy array
+            Velocity vector in km/s.
+        '''
+
+        # Decode the TLE string
+        util = Utilities(self.body)
+
+        tle_data = util.decode_tle(tle_file)
+
+        print(f'Name: {tle_data["name"]}')
+
+        deg = np.pi/180
+
+        # Extract the TLE data
+        inclination = tle_data['inclination'] * deg  # inclination in rad
+        raan = tle_data['raan'] * deg # right ascension of the ascending node in rad
+        eccentricity = tle_data['eccentricity'] # eccentricity
+        arg_of_perigee = tle_data['arg_of_perigee'] * deg # argument of perigee in rad
+        mean_anomaly = tle_data['mean_anomaly'] * deg  # mean anomaly in rad
+        mean_motion = tle_data['mean_motion'] /24/3600 # mean motion in rad/s
+
+        # Calculate de p and a
+        a = (self.mu / mean_motion**2)**(1/3) # semi-major axis in km
+        p = (1 - eccentricity**2) * a # Semi-l in km
+
+        nu, E = self.anomaly2nu(eccentricity, mean_anomaly)
+
+        r, v = self.coe2rv(p=p,
+                            e=eccentricity,
+                            i=inclination,
+                            Omega=raan,
+                            omega=arg_of_perigee,
+                            nu=nu,
+                            arglat=0,
+                            lonper=0,
+                            truelon=0)
+        
         return r, v
 
 
@@ -925,24 +972,7 @@ if __name__ == "__main__":
 
     kepler = KeplerPropagator(earth)
 
-    orb = kepler.rv2coe([6524.834, 6862.875, 6448.296], [4.901327, 5.533756, -1.976341])
-    
-    print(orb)
-
-    r, v = kepler.coe2rv(orb[0], orb[1], orb[2], orb[3], orb[4], orb[5],orb[6], orb[7], orb[8], orb[9])
-    print(r)
-    print(v)
-
-    E = kepler.KepEqtnE(235.4*np.pi/180, 0.4)
-    print(E)
-    B = kepler.KepEqtnP(53.7874*60, 25512)
-    print(B)
-    H = kepler.KepEqtnH(235.4*np.pi/180, 2.4)
-    print(H)
-
-    print(kepler.anomaly2nu2(0.4, 235.4*np.pi/180))
-
-
+    # Test
     R = np.array([1131.340, -2282.343, 6672.423])
     V = np.array([-5.64305, 4.30333, 2.42879])
     dt = 40 * 60
@@ -954,38 +984,21 @@ if __name__ == "__main__":
     util = Utilities(earth)
 
     # Decode the TLE string
+    
+    r0, v0 = kepler.RVFromTLE('data/paz.tle')
+    print(r0)
+    print(v0)
+
     tle_data = util.decode_tle('data/paz.tle')
-    
-    # Pkepler
-    print(f'Name: {tle_data["name"]}')
-    deg = np.pi/180
 
-    # r and v from coe
-    n = tle_data['mean_motion']/24/3600  # mean motion in rad/s
-    a = (earth.mu / n**2)**(1/3) # semi-major axis in km
-    p = a * (1 - tle_data['eccentricity']**2)
-
-    # true anomaly from mean anomaly
-    E = kepler.KepEqtnE(tle_data['mean_anomaly']*np.pi/180, tle_data['eccentricity'])
-    nu, E = kepler.anomaly2nu(tle_data['eccentricity'], E)
-
-    r0, v0 = kepler.coe2rv(p=p,
-                           a=a, 
-                           e=tle_data['eccentricity'], 
-                           i=tle_data['inclination']*deg, 
-                           Omega=tle_data['raan']*deg, 
-                           omega=tle_data['arg_of_perigee']*deg, 
-                           nu=nu,
-                           arglat=0,
-                           lonper=0,
-                           truelon=0)
-    
-    r, v = kepler.Pkepler(R, V, dt, tle_data['d_mean_motion'], tle_data['dd_mean_motion'])
+    r, v = kepler.Pkepler(r0, v0, dt, .00000107, tle_data['dd_mean_motion'])
+    r, v = kepler.Pkepler(R, V, dt, 0, 0)
 
     print(r)
     print(v)
 
-    # r, v = kepler.propagate(r0, v0, 3600*60, 3600, tle_data['d_mean_motion'], tle_data['dd_mean_motion'])
+    r, v = kepler.propagate(r0, v0, 60, .1, .00000107, 0)
+    
     
     # 3d plot
     import matplotlib.pyplot as plt
