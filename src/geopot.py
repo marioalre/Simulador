@@ -359,6 +359,8 @@ if __name__ == '__main__':
 
     Potencial = Geopot(Tierra)
 
+    val = Potencial.legendre(3, 0)
+
     # Potencial.gravitational_potential(7000000 ,1 , 1, 20)
 
     #data1, data2, data3 = Potencial.calculate(resolucion=90, order=20, option='gravity')

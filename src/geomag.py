@@ -79,7 +79,9 @@ class Geomag:
         print(f"El archivo {filename} se ha guardado correctamente.")
 
     def read_txt(self, filemane):
-        '''This function reads the txt file'''
+        '''This function reads the txt file
+        VERIFIED
+        '''
         # We open the file in read mode
         
         data = pd.read_csv(filemane, sep='\s+', skiprows=3, header=0, engine='python')
@@ -91,6 +93,10 @@ class Geomag:
         return data
 
     def get_all_txt_from_url(self, url="https://www.ncei.noaa.gov/products/international-geomagnetic-reference-field"):
+        '''
+        This function returns the url of the .txt file with the most recent data
+        VERIFIED
+        '''
 
         # Get the content of the web page
         response = requests.get(url)
@@ -137,6 +143,7 @@ class Geomag:
 
     def get_gh_data(self, n, m, year, coeff):
         '''This function returns the g and h coefficients for a given n, m, and year
+        VERIFIED
         Parameters
         ----------
         n : int
@@ -202,6 +209,7 @@ class Geomag:
 
     def Snm(self, nm_max=13):
         '''This function calculates the Snm function
+        VERIFIED
         Parameters
         ----------
         nm_max : int
@@ -231,10 +239,76 @@ class Geomag:
                 
         return Snm
     
+    def legendre_poly(self, nmax, theta):
+        """
+        Returns associated Legendre polynomials `P(n,m)` (Schmidt quasi-normalized)
+        and the derivative :math:`dP(n,m)/d\\theta` evaluated at :math:`\\theta`.
+        Parameters
+        ----------
+        nmax : int, positive
+            Maximum degree of the spherical expansion.
+        theta : ndarray, shape (...)
+            Colatitude in radians :math:`[0^\\circ, 180^\\circ]`
+            of arbitrary shape.
+        Returns
+        -------
+        Pnm : ndarray, shape (n, m, ...)
+            Evaluated values and derivatives, grid shape is appended as trailing
+            dimensions. `P(n,m)` := ``Pnm[n, m, ...]`` and `dP(n,m)` :=
+            ``Pnm[m, n+1, ...]``
+        References
+        ----------
+        Based on Equations 26-29 and Table 2 in:
+        Langel, R. A., "Geomagnetism - The main field", Academic Press, 1987,
+        chapter 4
+        """
+
+        costh = np.cos(theta)
+        sinth = np.sqrt(1-costh**2)
+
+        Pnm = np.zeros((nmax+1, nmax+2) + costh.shape)
+        Pnm[0, 0] = 1.  # is copied into trailing dimensions
+        Pnm[1, 1] = sinth  # write theta into trailing dimenions via broadcasting
+
+        rootn = np.sqrt(np.arange(2 * nmax**2 + 1))
+
+        # Recursion relations after Langel "The Main Field" (1987),
+        # eq. (27) and Table 2 (p. 256)
+        for m in range(nmax):
+            Pnm_tmp = rootn[m+m+1] * Pnm[m, m]
+            Pnm[m+1, m] = costh * Pnm_tmp
+
+            if m > 0:
+                Pnm[m+1, m+1] = sinth*Pnm_tmp / rootn[m+m+2]
+
+            for n in np.arange(m+2, nmax+1):
+                d = n * n - m * m
+                e = n + n - 1
+                Pnm[n, m] = ((e * costh * Pnm[n-1, m] - rootn[d-e] * Pnm[n-2, m])
+                            / rootn[d])
+
+        # dP(n,m) = Pnm(m,n+1) is the derivative of P(n,m) vrt. theta
+        Pnm[0, 2] = -Pnm[1, 1]
+        Pnm[1, 2] = Pnm[1, 0]
+        for n in range(2, nmax+1):
+            Pnm[0, n+1] = -np.sqrt((n*n + n) / 2) * Pnm[n, 1]
+            Pnm[1, n+1] = ((np.sqrt(2 * (n*n + n)) * Pnm[n, 0]
+                        - np.sqrt((n*n + n - 2)) * Pnm[n, 2]) / 2)
+
+            for m in np.arange(2, n):
+                Pnm[m, n+1] = (0.5*(np.sqrt((n + m) * (n - m + 1)) * Pnm[n, m-1]
+                            - np.sqrt((n + m + 1) * (n - m)) * Pnm[n, m+1]))
+
+            Pnm[n, n+1] = np.sqrt(2 * n) * Pnm[n, n-1] / 2
+
+
+        return Pnm
+    
     def gauss_norm_ass_leg_poly(self, nm_max, theta):
         '''This function calculates the associated Legendre polynomials with the normalization factor
         Gauss's normalization factor is used. 
         Recurrence relation for the associated Legendre polynomials is used.
+        VERIFIED
         Parameters
         ----------
         nm_max : int
@@ -273,9 +347,11 @@ class Geomag:
                     dPnm[n, m] = -np.sin(theta) * Pnm[n-1, m] + np.cos(theta) * dPnm[n-1, m] - Knm * dPnm[n-2, m]   
 
         return Pnm, dPnm
+    
 
     def get_gh_norm(self, n, m, year, coeff):
         '''This function returns the normalization factor for a given n and m
+        VERIFIED
         Parameters
         ----------
         n : int
@@ -307,6 +383,7 @@ class Geomag:
 
     def dipole(self, phi, theta, r, year=2020):
         '''This function calculates the magnetic field due to a dipole
+        VERIFIED
         Parameters
         ----------
         phi : float
@@ -416,6 +493,10 @@ class Geomag:
         g21 = gh['g']
         g20 = self.get_gh_norm(n = 2, m = 0, year = year, coeff = 'g')['g']
 
+        
+        # Calculate the magnetic field
+
+        Bm , B = self.dipole(phi, theta, r, year)
 
         # Convert to radians
         phi = np.radians(phi)
@@ -430,10 +511,6 @@ class Geomag:
             raise ValueError('The co-elevation must be between -90 and 90')
         if theta <= -np.pi or theta >= np.pi:
             raise ValueError('The longitude must be between -180 and 180')
-        
-        # Calculate the magnetic field
-
-        Bm , B = self.dipole(phi, theta, r, year)
 
         Br_dip = B[0]
         Btheta_dip = B[1]
@@ -478,6 +555,14 @@ class Geomag:
         h31 = gh['h']
         g31 = gh['g']
         g30 = self.get_gh_norm(n = 3, m = 0, year = year, coeff = 'g')['g']
+        
+        # Calculate the magnetic field
+
+        Bm , B = self.quadrupole(phi, theta, r, year)
+
+        Br_quad = B[0]
+        Btheta_quad = B[1]
+        Bphi_quad = B[2]
 
         # Convert to radians
         phi = np.radians(phi)
@@ -492,21 +577,13 @@ class Geomag:
             raise ValueError('The co-elevation must be between -90 and 90')
         if theta <= -np.pi or theta >= np.pi:
             raise ValueError('The longitude must be between -180 and 180')
-        
-        # Calculate the magnetic field
-
-        Bm , B = self.quadrupole(phi, theta, r, year)
-
-        Br_quad = B[0]
-        Btheta_quad = B[1]
-        Bphi_quad = B[2]
 
         Br = Br_quad + 4 * (self.Re/r)**5 * (0.5*g30*(np.cos(2*theta) + 1/5) +0.5*(g31 * np.cos(phi) + \
             h31 * np.sin(phi)) * np.sin(theta)*(np.cos(2*theta) - 3/5)+ 0.5*(g32 * np.cos(2*phi) + h32 * np.sin(2*phi)) * \
             np.cos(theta)*(1-np.cos(2*theta)) + 0.5*(g33 * np.cos(3*phi) + h33 * np.sin(3*phi)) * np.sin(theta)*(1-np.cos(2*theta)))
         
         Btheta = Btheta_quad - 3*(self.Re/r)**5 * (0.5*g30*np.sin(theta)*(np.cos(2*theta)-3/5) + 0.5*(g31*np.cos(phi) + \
-            h31*np.sin(phi))*np.cos(theta)*(np.cos(2*theta)-2/5) - 0.5*(g32*np.cos(2*phi) + h32*np.sin(2*phi))*np.sin(theta)*\
+            h31*np.sin(phi))*np.cos(theta)*(np.cos(2*theta)-2/5) + 0.5*(g32*np.cos(2*phi) + h32*np.sin(2*phi))*np.sin(theta)*\
             (np.cos(2*theta) - 1/3) + 0.5*(g33*np.cos(3*phi) + h33*np.sin(3*phi))*np.cos(theta)*(1-np.cos(2*theta)))
         
         Bphi = Bphi_quad + (self.Re/r)**5 * (0.5*(g31*np.sin(phi) - h31*np.cos(phi))*(np.cos(2*theta)+3/5) + \
@@ -552,8 +629,9 @@ class Geomag:
             raise ValueError('The longitude must be between -180 and 180')
 
 
-        Pnm, dPnm = self.gauss_norm_ass_leg_poly(nm_max=N, theta=theta)
+        # Pnm, dPnm = self.gauss_norm_ass_leg_poly(nm_max=N, theta=theta)
 
+        Pnm = self.legendre_poly(N, theta)
 
         if not 0<N<self.max_mn:
             raise ValueError('The order must be between 1 and 13')
@@ -575,12 +653,16 @@ class Geomag:
                         h = 0
 
                     Br += (self.Re / r)**(n+2)* (n + 1) * Pnm[n, m] * (g * np.cos(m*phi) + h*np.sin(m*phi))
-                    Btheta -= (self.Re/r)**(n+2) * dPnm[n, m] * (g * np.cos(m*phi) + h * np.sin(m*phi))
+                    Btheta -= (self.Re/r)**(n+2) * Pnm[m, n+1] * (g * np.cos(m*phi) + h * np.sin(m*phi))
+
+                    # Pnm[m, n+1] dPnm[n, m]
 
                     if theta == 0 or theta == np.pi:
                         Bphi = np.inf
                     else:
                         Bphi -= (self.Re/r)**(n+2) * (-m*g*np.sin(m*phi) + h*m*np.cos(m*phi)) * Pnm[n, m] / np.sin(theta)
+
+                    print(n, m, Br, Btheta, Bphi)
 
         Bvector = np.array([Br, Btheta, Bphi])
         Bmodule = np.linalg.norm(Bvector)
@@ -608,8 +690,11 @@ class Geomag:
         # Convert to radians
 
 
-        delta = 90 - theta
-        epsilon = lambdaa - delta
+        delta = 90 - theta # Declination
+        epsilon = lambdaa - delta # Elevation (geodetic latitude)
+
+        if epsilon > 0.2:
+            print('Warning: The elevation is higher than 0.2 degrees')
 
         delta = np.radians(delta)
         epsilon = np.radians(epsilon)
@@ -618,9 +703,9 @@ class Geomag:
         Btheta = Bvector[1]
         Bphi = Bvector[2]
 
-        BN = -Btheta * np.cos(delta) - Br * np.sin(delta)
+        BN = -Btheta * np.cos(epsilon) - Br * np.sin(epsilon)
         BE = Bphi
-        BD = Btheta * np.sin(delta) - Br * np.cos(delta)
+        BD = Btheta * np.sin(epsilon) - Br * np.cos(epsilon)
 
         return np.array([BN, BE, BD])
     
@@ -666,7 +751,7 @@ class Geomag:
         return np.array([BxI, ByI, BzI])
     
     def transformation2orb(self, Bvector, orbparam, phi, theta, thetag = 0):
-        '''Transformation of the earth’s magnetic field from inertial coordinates to body frame
+        '''Transformation of the earth’s magnetic field from inertial coordinates to orbital coordinates
         Parameters
         ----------
         Bvector : array
@@ -676,11 +761,6 @@ class Geomag:
             - true anomaly (in degrees)
             - Right ascension of ascending node (in degrees)
             - inclination (in degrees)
-        attiparam : array
-            The attitude parameters
-            - roll (in degrees)
-            - pitch (in degrees)
-            - yaw (in degrees)
         phi : float
             The co-elevation of the point where to calculate the magnetic field (in degrees)
         theta : float
@@ -690,7 +770,7 @@ class Geomag:
         Returns
         -------
         B : float
-            The magnetic field at the given location in body frame
+            The magnetic field at the given location in orbital coordinates
         '''
 
         delta = 90 - phi
@@ -716,13 +796,13 @@ class Geomag:
             (np.cos(ta)*np.sin(inclination))*(Br*np.sin(delta) - Btheta*np.cos(delta))
         
         ByO = -np.sin(inclination)*np.sin(RAAN)*(Br*np.cos(delta)*np.cos(alpha) + Btheta*np.sin(delta)*np.cos(alpha) - Bphi*np.sin(alpha)) + \
-                np.sin(inclination)*np.cos(RAAN)*(Br*np.cos(delta)*np.sin(alpha) + Btheta*np.sin(delta)*np.sin(alpha) + Bphi*np.cos(alpha)) + \
+                np.sin(inclination)*np.cos(RAAN)*(Br*np.cos(delta)*np.sin(alpha) + Btheta*np.sin(delta)*np.sin(alpha) + Bphi*np.cos(alpha)) - \
                 np.cos(inclination)*(Br*np.sin(delta) - Btheta*np.cos(delta))
         
-        BzO = (-np.cos(ta)*np.cos(RAAN) - np.sin(RAAN)*np.cos(RAAN)*np.sin(inclination))* \
+        BzO = (-np.cos(ta)*np.cos(RAAN) + np.sin(ta)*np.sin(RAAN)*np.cos(inclination))* \
             (Br*np.cos(delta)*np.cos(alpha) + Btheta*np.sin(delta)*np.cos(alpha) - Bphi*np.sin(alpha)) + \
             (-np.cos(ta)*np.sin(RAAN) - np.sin(ta)*np.cos(RAAN)*np.cos(inclination))* \
-            (Br*np.cos(delta)*np.sin(alpha) + Btheta*np.sin(delta)*np.sin(alpha) + Bphi*np.cos(alpha)) + \
+            (Br*np.cos(delta)*np.sin(alpha) + Btheta*np.sin(delta)*np.sin(alpha) + Bphi*np.cos(alpha)) - \
             (np.sin(ta)*np.sin(inclination))*(Br*np.sin(delta) - Btheta*np.cos(delta))
         
         return np.array([BxO, ByO, BzO])
@@ -731,8 +811,17 @@ class Geomag:
         '''Transformation of the earth’s magnetic field from inertial coordinates to body frame
         Parameters
         ----------
-        Bvector : array
-
+        BvectorOrb : array
+            The magnetic field vector in orbital coordinates
+        attiparam : array
+            The attitude parameters
+            - roll (in degrees)
+            - pitch (in degrees)
+            - yaw (in degrees)
+        Returns
+        -------
+        B : float
+            The magnetic field at the given location in body frame
         '''
         # to radians
         roll = np.radians(attiparam[0])
@@ -783,17 +872,23 @@ if __name__ == '__main__':
     data = geomag.get_txt()
     print(data)
     
-    print(geomag.Snm())
+    print(geomag.Snm(3))
     print(geomag.get_gh_data(2, 0, '2000.0', 'b'))
+    print('dipole')
     print(geomag.dipole(10, 10, 7000))
     print(geomag.centered_dipole(10, 10, 7000))
+    print('quadrupole')
     print(geomag.quadrupole(10, 10, 7000))
+    print('octupole')
     print(geomag.octupole(10, 10, 7000))
 
 
-    print(geomag.magnetic_field(10, 10, 7000, N=1))
+    print(geomag.magnetic_field(10, 10, 7000, N=3))
     # a, b = geomag.gauss_norm_ass_leg_poly(2, np.pi/4)
 
 
-
+    # Earth radius value (6)
+    
+    valNED = geomag.transformation2NED(6378.137, 0, 0, 0, geomag.magnetic_field(0, 0, 6378.137, N=2)[1])
+    print(valNED)
 
