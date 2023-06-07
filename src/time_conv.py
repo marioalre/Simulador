@@ -19,7 +19,7 @@ def rad2sid(radians):
 def ConvTime(date, UTC, dUT1, dAT, time_system='UT1'):
     '''The following formulas provide a means
     to determine the number of centuries elapsed
-     from the epoch J2000.0 Ref: Vallado
+    from the epoch J2000.0 Ref: Vallado
     
     Parameters
     ----------

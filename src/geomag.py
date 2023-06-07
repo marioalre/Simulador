@@ -229,7 +229,7 @@ class Geomag:
                 if m==0 and n==0:
                     Snm[n, m] = 1
                 elif m==0 and n>=1:
-                    Snm[n, m] = np.sqrt((2*n - 1)/(n)) * Snm[n-1, m]
+                    Snm[n, m] = (2*n - 1)/(n) * Snm[n-1, m]
                 elif m>=1 and n>=m:
                     factor = np.sqrt(2)
                     if m==1:
@@ -328,24 +328,31 @@ class Geomag:
         Pnm = np.zeros((nm_max + 1, nm_max + 1))
         dPnm = np.zeros((nm_max + 1, nm_max + 1))
 
-        for m in range(nm_max + 1): # m is the degree of the spherical harmonic function
-            for n in range(nm_max + 1): # n is the order of the spherical harmonic function
-                if m==0 and n==0:
-                    Pnm[n, m] = 1
-                    dPnm[n, m] = 0
-                elif m==n:
+        Snm = self.Snm(nm_max)
+
+        Pnm[0, 0] = 1
+        
+        for n in range(1, nm_max +1): # m is the degree of the spherical harmonic function
+            for m in range(0, min([n + 1, nm_max + 1])): # n is the order of the spherical harmonic function
+                # do the legendre polynomials and derivatives
+                if m==n:
                     Pnm[n, m] = np.sin(theta) * Pnm[n-1, m-1]
                     dPnm[n, m] = np.cos(theta) * Pnm[n-1, m-1] + np.sin(theta) * dPnm[n-1, m-1]
-                elif m>=0 and n>=1 and n>m:
+                else:
                     if n==1:
-                        Knm = 0   
+                        Knm = 0
+                        Pnm[n, m] = np.cos(theta) * Pnm[n-1, m]
+                        dPnm[n, m] = -np.sin(theta) * Pnm[n-1, m] + np.cos(theta) * dPnm[n-1, m]
                     elif n > 1:
-                        Knm = ((n - 1)^2 - m^2)/((2*n-1)*(2*n - 3))
-                    
-                    Pnm[n, m] = np.cos(theta) * Pnm[n-1, m] - Knm * Pnm[n-2, m] #Posible error cuando n=m=1
-
-                    dPnm[n, m] = -np.sin(theta) * Pnm[n-1, m] + np.cos(theta) * dPnm[n-1, m] - Knm * dPnm[n-2, m]   
-
+                        Knm = ((n - 1)**2 - m**2)/((2*n-1)*(2*n - 3))                   
+                        Pnm[n, m] = np.cos(theta) * Pnm[n-1, m] - Knm * Pnm[n-2, m] #Posible error cuando n=m=1
+                        dPnm[n, m] = -np.sin(theta) * Pnm[n-1, m] + np.cos(theta) * dPnm[n-1, m] - Knm * dPnm[n-2, m]   
+                
+        for n in range(1, nm_max +1): # m is the degree of the spherical harmonic function
+            for m in range(0, min([n + 1, nm_max + 1])): # n is the order of the spherical harmonic function
+                Pnm[n, m] = Pnm[n, m] * Snm[n, m]
+                dPnm[n, m] = dPnm[n, m] * Snm[n, m]
+        
         return Pnm, dPnm
     
 
@@ -595,7 +602,7 @@ class Geomag:
 
         return Bmodule, Bvector
     
-    def magnetic_field(self, phi, theta, r, year=2020, N=3):
+    def magnetic_field(self, phi, theta, r, year=2021, N=3):
 
         '''This function calculates the magnetic field at a given location
         Parameters
@@ -628,23 +635,22 @@ class Geomag:
         if theta <= -np.pi or theta >= np.pi:
             raise ValueError('The longitude must be between -180 and 180')
 
+        Snm = self.Snm(nm_max=N)
+        Pnm, dPnm = self.gauss_norm_ass_leg_poly(nm_max=N, theta=theta)
+        # Pnm = self.legendre_poly(N, theta)
 
-        # Pnm, dPnm = self.gauss_norm_ass_leg_poly(nm_max=N, theta=theta)
 
-        Pnm = self.legendre_poly(N, theta)
-
-        if not 0<N<self.max_mn:
+        if not 0<N<=self.max_mn:
             raise ValueError('The order must be between 1 and 13')
          
-
         Br = 0
         Btheta = 0
         Bphi = 0
 
-        for n in range(1, N+1):
-            for m in range(0, N+1):
+        for n in range(1, N +1): # m is the degree of the spherical harmonic function
+            for m in range(0, min([n + 1, N + 1])): # n is the order of the spherical harmonic function
                 if n >= m:
-                    gh = self.get_gh_norm(n, m, year, 'b')
+                    gh = self.get_gh_data(n, m, year, 'b')
                     g = gh['g']
 
                     if m != 0:
@@ -653,7 +659,7 @@ class Geomag:
                         h = 0
 
                     Br += (self.Re / r)**(n+2)* (n + 1) * Pnm[n, m] * (g * np.cos(m*phi) + h*np.sin(m*phi))
-                    Btheta -= (self.Re/r)**(n+2) * Pnm[m, n+1] * (g * np.cos(m*phi) + h * np.sin(m*phi))
+                    Btheta += -(self.Re/r)**(n+2) * dPnm[n, m] * (g * np.cos(m*phi) + h * np.sin(m*phi))
 
                     # Pnm[m, n+1] dPnm[n, m]
 
@@ -668,9 +674,150 @@ class Geomag:
         Bmodule = np.linalg.norm(Bvector)
 
         return Bmodule, Bvector
+    def gg_to_geo(self, h, gdcolat):
+        """
+        Compute geocentric colatitude and radius from geodetic colatitude and
+        height.
+
+        Alken, P., Thebault, E., Beggan, C. et al, (2020) International Geomagnetic Reference Field: the thirteenth generation, Earth Planets and Space, vol. XX, XX-XX, doi:10.XXX
+
+        Parameters
+        ----------
+        h : ndarray, shape (...)
+            Altitude in kilometers.
+        gdcolat : ndarray, shape (...)
+            Geodetic colatitude
+
+        Returns
+        -------
+        radius : ndarray, shape (...)
+            Geocentric radius in kilometers.
+        theta : ndarray, shape (...)
+            Geocentric colatitude in degrees.
+        
+        sd : ndarray shape (...) 
+            rotate B_X to gd_lat 
+        cd :  ndarray shape (...) 
+            rotate B_Z to gd_lat 
+
+        References
+        ----------
+        Equations (51)-(53) from "The main field" (chapter 4) by Langel, R. A. in:
+        "Geomagnetism", Volume 1, Jacobs, J. A., Academic Press, 1987.
+        
+        Malin, S.R.C. and Barraclough, D.R., 1981. An algorithm for synthesizing 
+        the geomagnetic field. Computers & Geosciences, 7(4), pp.401-405.
+
+        """
+        # Use WGS-84 ellipsoid parameters
+
+        eqrad = 6378.137 # equatorial radius
+        flat  = 1/298.257223563
+        plrad = eqrad*(1-flat) # polar radius
+        ctgd  = np.cos(np.deg2rad(gdcolat))
+        stgd  = np.sin(np.deg2rad(gdcolat))
+        a2    = eqrad*eqrad
+        a4    = a2*a2
+        b2    = plrad*plrad
+        b4    = b2*b2
+        c2    = ctgd*ctgd
+        s2    = 1-c2
+        rho   = np.sqrt(a2*s2 + b2*c2)
+        
+        rad   = np.sqrt(h*(h+2*rho) + (a4*s2+b4*c2)/rho**2)
+
+        cd    = (h+rho)/rad
+        sd    = (a2-b2)*ctgd*stgd/(rho*rad)
+        
+        cthc  = ctgd*cd - stgd*sd           # Also: sthc = stgd*cd + ctgd*sd
+        thc   = np.rad2deg(np.arccos(cthc)) # arccos returns values in [0, pi]
+        
+        return rad, thc, sd, cd
+
+
+    def geo_to_gg(self, radius, theta):
+        """
+        Compute geodetic colatitude and vertical height above the ellipsoid from
+        geocentric radius and colatitude.
+
+        Alken, P., Thebault, E., Beggan, C. et al, (2020) International Geomagnetic Reference Field: the thirteenth generation, Earth Planets and Space, vol. XX, XX-XX, doi:10.XXX
+
+        Parameters
+        ----------
+        radius : ndarray, shape (...)
+            Geocentric radius in kilometers.
+        theta : ndarray, shape (...)
+            Geocentric colatitude in degrees.
+
+        Returns
+        -------
+        height : ndarray, shape (...)
+            Altitude in kilometers.
+        beta : ndarray, shape (...)
+            Geodetic colatitude
+
+        Notes
+        -----
+        Round-off errors might lead to a failure of the algorithm especially but
+        not exclusively for points close to the geographic poles. Corresponding
+        geodetic coordinates are returned as NaN.
+
+        References
+        ----------
+        Function uses Heikkinen's algorithm taken from:
+
+        Zhu, J., "Conversion of Earth-centered Earth-fixed coordinates to geodetic
+        coordinates", IEEE Transactions on Aerospace and Electronic Systems}, 1994,
+        vol. 30, num. 3, pp. 957-961
+
+        """
+        
+        # Use WGS-84 ellipsoid parameters
+        a =  6378.137  # equatorial radius
+        b =  6356.752  # polar radius
+        
+        a2 = a**2
+        b2 = b**2
+
+        e2 = (a2 - b2) / a2  # squared eccentricity
+        e4 = e2*e2
+        ep2 = (a2 - b2) / b2  # squared primed eccentricity
+
+        r = radius * np.sin(np.radians(theta))
+        z = radius * np.cos(np.radians(theta))
+
+        r2 = r**2
+        z2 = z**2
+
+        F = 54*b2*z2
+
+        G = r2 + (1. - e2)*z2 - e2*(a2 - b2)
+
+        c = e4*F*r2 / G**3
+
+        s = (1. + c + np.sqrt(c**2 + 2*c))**(1./3)
+
+        P = F / (3*(s + 1./s + 1.)**2 * G**2)
+
+        Q = np.sqrt(1. + 2*e4*P)
+
+        r0 = -P*e2*r / (1. + Q) + np.sqrt(
+            0.5*a2*(1. + 1./Q) - P*(1. - e2)*z2 / (Q*(1. + Q)) - 0.5*P*r2)
+
+        U = np.sqrt((r - e2*r0)**2 + z2)
+
+        V = np.sqrt((r - e2*r0)**2 + (1. - e2)*z2)
+
+        z0 = b2*z/(a*V)
+
+        height = U*(1. - b2 / (a*V))
+
+        beta = 90. - np.degrees(np.arctan2(z + ep2*z0, r))
+
+        return height, beta
     
     def transformation2NED(self, r, theta, phi, lambdaa, Bvector):
-        '''Transformation of the earth’s magnetic field from local tangent plane coordinate to NED
+        '''Transformation of the earth's magnetic field from local tangent plane coordinate to NED
         Parameters
         ----------
         r : float
@@ -710,7 +857,7 @@ class Geomag:
         return np.array([BN, BE, BD])
     
     def transformation2inertial(self, Bvector, r, theta, phi, thetag = 0):
-        '''Transformation of the earth’s magnetic field from local tangent plane coordinate to inertial coordinates
+        '''Transformation of the earth's magnetic field from local tangent plane coordinate to inertial coordinates
         Parameters
         ----------
         r : float
@@ -883,12 +1030,12 @@ if __name__ == '__main__':
     print(geomag.octupole(10, 10, 7000))
 
 
-    print(geomag.magnetic_field(10, 10, 7000, N=3))
+    print(geomag.magnetic_field(10, 10, 7000,year=2020, N=2))
     # a, b = geomag.gauss_norm_ass_leg_poly(2, np.pi/4)
 
 
     # Earth radius value (6)
     
-    valNED = geomag.transformation2NED(6378.137, 0, 0, 0, geomag.magnetic_field(0, 0, 6378.137, N=2)[1])
-    print(valNED)
+   # valNED = geomag.transformation2NED(7000, 10, 10, 0, geomag.magnetic_field(10, 10, 7000, N=12)[1])
+   # print(valNED)
 
