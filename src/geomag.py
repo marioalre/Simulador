@@ -396,9 +396,9 @@ class Geomag:
         Parameters
         ----------
         phi : float
-            The co-elevation of the point where to calculate the magnetic field (in degrees)
+            Longitude measured in degrees positive east from Greenwich (in degrees)
         theta : float
-            The East longitude of the point where to calculate the magnetic field (in degrees)
+            The latitude measured in degrees positive from equator (in degrees)
         r : float
             The distance from the center of the Earth to the point where to calculate the magnetic field (in km)
         Returns
@@ -441,9 +441,9 @@ class Geomag:
         Parameters
         ----------
         phi : float
-            The co-elevation of the point where to calculate the magnetic field (in degrees)
+            Longitude measured in degrees positive east from Greenwich (in degrees)
         theta : float
-            The  East longitude of the point where to calculate the magnetic field (in degrees)
+            The latitude measured in degrees positive from equator (in degrees)
         r : float
             The distance from the center of the Earth to the point where to calculate the magnetic field (in km)
         Returns
@@ -484,9 +484,9 @@ class Geomag:
         Parameters
         ----------
         phi : float
-            The co-elevation of the point where to calculate the magnetic field (in degrees)
+            Longitude measured in degrees positive east from Greenwich (in degrees)
         theta : float
-            The  East longitude of the point where to calculate the magnetic field (in degrees)
+            The latitude measured in degrees positive from equator (in degrees)
         r : float
             The distance from the center of the Earth to the point where to calculate the magnetic field (in km)
         Returns
@@ -544,9 +544,9 @@ class Geomag:
         Parameters
         ----------
         phi : float
-            The co-elevation of the point where to calculate the magnetic field (in degrees)
+            Longitude measured in degrees positive east from Greenwich (in degrees)
         theta : float
-            The  East longitude of the point where to calculate the magnetic field (in degrees)
+            The latitude measured in degrees positive from equator (in degrees)
         r : float
             The distance from the center of the Earth to the point where to calculate the magnetic field (in km)
         Returns
@@ -610,9 +610,9 @@ class Geomag:
         Parameters
         ----------
         phi : float
-            The co-elevation of the point where to calculate the magnetic field (in degrees)
+            Longitude measured in degrees positive east from Greenwich (in degrees)
         theta : float
-            The  East longitude of the point where to calculate the magnetic field (in degrees)
+            The latitude measured in degrees positive from equator (in degrees)
         r : float
             The distance from the center of the Earth to the point where to calculate the magnetic field (in km)
         N : int
@@ -691,7 +691,7 @@ class Geomag:
         r : float
             The distance from the center of the Earth to the point where to calculate the magnetic field (in km)
         theta : float
-            The  Latitude measured in degrees positive from equator (in degrees)
+            The latitude measured in degrees positive from equator (in degrees)
         phi : float
             Longitude measured in degrees positive east from Greenwich (in degrees)
         year : float or int
@@ -1105,6 +1105,32 @@ class Geomag:
         BzB = -pitch*BxO + roll*ByO + BzO
 
         return np.array([BxB, ByB, BzB])
+    def xyz2dhif(x, y, z):
+        '''Calculate D, H, I and F from (X, Y, Z)
+        
+        Based on code from D. Kerridge, 2019
+        
+        Parameters
+        ---------------
+        X: north component (nT) : float
+        Y: east component (nT) : float
+        Z: vertical component (nT) : float
+        
+        Returns
+        ------
+        A tuple: (D, H, I, F) : float
+        D: declination (degrees) : float
+        H: horizontal intensity (nT) : float
+        I: inclination (degrees) : float
+        F: total intensity (nT) : float
+        '''
+        hsq = x*x + y*y
+        hoz  = np.sqrt(hsq)
+        eff = np.sqrt(hsq + z*z)
+        dec = np.arctan2(y,x)
+        inc = np.arctan2(z,hoz)
+        
+        return np.degrees(dec), hoz, np.degrees(inc), eff
     
     def plotMagneticField(self, val, year=2020, N=13, modelos=[1, 0, 0, 0, 1], timeRange=[1900, 2025], absolute_value=False):
         '''This function plots the magnetic field at a given location
