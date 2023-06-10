@@ -11,7 +11,7 @@ class ECI2ECEF:
     '''
 
     # Define the constructor that takes the input parameters
-    def __init__(self, reci=0, veci=0, aeci=0, ttt=0, jdut1=0, lod=0, xp=0, yp=0, eqeterms=0, ddpsi=0, ddeps=0):
+    def __init__(self, reci, veci, aeci, ttt, jdut1, lod, xp, yp, eqeterms, ddpsi, ddeps):
         ''' 
         This function initializes the class with the input parameters.
         Inputs:
@@ -22,7 +22,7 @@ class ECI2ECEF:
             lod: Length of day (sec)
             xp: Polar motion coefficient (arcsec)
             yp: Polar motion coefficient (arcsec)
-            eqeterms: Boolean to select if the extra terms for nutation are used
+            eqeterms: Boolean to select if the extra terms for nutation are used (0 or 2)
             ddpsi: Correction to delta psi (arcsec)
             ddeps: Correction to delta eps (arcsec)
         '''
@@ -195,7 +195,7 @@ class ECI2ECEF:
         prec[2, 2] = costheta
 
 
-        return prec
+        return prec, psia, wa, ea, xa
 
 
     def nutation(self, ttt, ddpsi, ddeps):
@@ -383,17 +383,16 @@ class ECI2ECEF:
         thetasa = 7.29211514670698e-05 * (1.0 - lod / 86400.0)
         omegaearth = thetasa
 
-        st = [[math.cos(ast), -math.sin(ast), 0.0],
+        st = np.array([[math.cos(ast), -math.sin(ast), 0.0],
             [math.sin(ast), math.cos(ast), 0.0],
-            [0.0, 0.0, 1.0]]
+            [0.0, 0.0, 1.0]])
 
-        stdot = [[-omegaearth * math.sin(ast), -omegaearth * math.cos(ast), 0.0],
+        stdot = np.array([[-omegaearth * math.sin(ast), -omegaearth * math.cos(ast), 0.0],
                 [omegaearth * math.cos(ast), -omegaearth * math.sin(ast), 0.0],
-                [0.0, 0.0, 0.0]]
+                [0.0, 0.0, 0.0]])
 
         return st, stdot
     
-    import math
 
     def gstime(self, jdut1):
         twopi = 2.0 * math.pi
@@ -451,10 +450,25 @@ class ECI2ECEF:
 
 if __name__ == '__main__':
 
-    conv = ECI2ECEF()
+    # seguntos to arco segundos
+    convrt = np.pi / (180.0 * 3600.0)
 
-    print(conv.precess(0.043674121031, '06').round(4))
-    print(conv.nutation(0.043674121031, 0, 0))
+    r_eci = [5.1025, 6.1230, 6.3781]
+    v_eci = [-4.7432, 0.7905, 5.5338]
+    a_eci = [0.0026, 0.0001, 0.0030]
+
+    ttt = 0.0426236319
+    jdut1 = 2.4531e6
+    lod = 0.001556300
+    xp = -6.820455828585174e-07
+    yp = 1.615927632369383e-06
+    eqeterms = 2
+    ddpsi = -2.530485008551223e-7
+    ddeps = -1.878653014299452e-8
+    conv = ECI2ECEF(r_eci, v_eci, a_eci, ttt, jdut1, lod, xp, yp, eqeterms, ddpsi, ddeps)
+
+    recef, vecef, aecef = conv.eci2ecef()
+    print(recef)  #coregir
 
 
 
