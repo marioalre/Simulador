@@ -1106,7 +1106,7 @@ class Geomag:
 
         return np.array([BxB, ByB, BzB])
     
-    def plotMagneticField(self, val, year=2020, N=13, modelos=[1, 0, 0, 0, 1], timeRange=[1900, 2025]):
+    def plotMagneticField(self, val, year=2020, N=13, modelos=[1, 0, 0, 0, 1], timeRange=[1900, 2025], absolute_value=False):
         '''This function plots the magnetic field at a given location
         Parameters
         ----------
@@ -1127,6 +1127,8 @@ class Geomag:
             The time range to plot the magnetic field
             [start, end]
             Limits: 1900 - 2025
+        absolute_value : bool
+            If True the absolute value of the magnetic field will be plotted
         Returns
         '''
 
@@ -1144,47 +1146,80 @@ class Geomag:
         Btheta = np.zeros([len(modelos), len(time)])
         Bphi = np.zeros([len(modelos), len(time)])
 
-        fig, axs = plt.subplots(3, 1, figsize=(10, 10))
-
-        list_modelos = ['Dipolo', 'Dipolo centrado', 'Cuatdrupolo', 'Octupolo', 'Modelo completo de Orden '+ str(N)]
-        list_colors = ['b', 'r', 'g', 'y']
+        list_modelos = ['Dipolo', 'Dipolo centrado', 'Cuadrupolo', 'Octupolo', 'Modelo completo de Orden '+ str(N)]
+        list_colors = ['b', 'r', 'g', 'y', 'k']
         legend = []
-        for idx, model in enumerate(modelos):
-            if model==1:
-                for idxt, t in enumerate(time):
-                    if idx == 0:
-                        val = geomag.dipole(phi, theta, r, year=t)[1]
-                    elif idx == 1:
-                        val = geomag.centered_dipole(phi, theta, r, year=t)[1]
-                    elif idx == 2:
-                        val = geomag.quadrupole(phi, theta, r, year=t)[1]
-                    elif idx == 3:
-                        val = geomag.octupole(phi, theta, r, year=t)[1]
-                    elif idx == 4:
-                        val = geomag.magnetic_field(phi, theta, r, year=t, N=N)[1]
 
-                    Br[idx, idxt] = val[0]
-                    Btheta[idx, idxt] = val[1]
-                    Bphi[idx, idxt] = val[2]
+        if absolute_value:
+            fig, axs = plt.subplots(1, 1, figsize=(10, 10))
+            for idx, model in enumerate(modelos):
+                if model==1:
+                    for idxt, t in enumerate(time):
+                        if idx == 0:
+                            val = self.dipole(phi, theta, r, year=t)[0]
+                        elif idx == 1:
+                            val = self.centered_dipole(phi, theta, r, year=t)[0]
+                        elif idx == 2:
+                            val = self.quadrupole(phi, theta, r, year=t)[0]
+                        elif idx == 3:
+                            # val = geomag.octupole(phi, theta, r, year=t)[0]
+                            val = self.magnetic_field(phi, theta, r, year=t, N=3)[0]
+                        elif idx == 4:
+                            val = self.magnetic_field(phi, theta, r, year=t, N=N)[0]
+
+                        Br[idx, idxt] = val[0]
 
 
-                axs[0].plot(time, Br[idx, :], list_colors[idx], label=list_modelos[idx])
-                axs[0].set_ylabel('B_r (nT)')
-                axs[1].plot(time, Btheta[idx, :], list_colors[idx], label=list_modelos[idx])
-                axs[1].set_ylabel('B_theta (nT)')
-                axs[2].plot(time, Bphi[idx, :], list_colors[idx], label=list_modelos[idx])
-                axs[2].set_ylabel('B_phi (nT)')
-                
+                    axs.plot(time, Br[idx, :], list_colors[idx], label=list_modelos[idx])
 
-                legend.append(list_modelos[idx])
+                    legend.append(list_modelos[idx])
 
-        axs[0].legend(legend, loc='upper right')
-        axs[0].set_title('Campo magnético')
-        axs[2].set_xlabel('Año')
+            axs[0].set_ylabel('B (nT)')
+            axs.legend(legend, loc='upper right')
+            axs.set_title('Campo magnético')
+            axs.set_xlabel('Año')
 
-        axs[0].grid( which='major', axis='both')
-        axs[1].grid( which='major', axis='both')
-        axs[2].grid( which='major', axis='both')
+            axs.grid( which='major', axis='both')
+
+        else:
+            fig, axs = plt.subplots(3, 1, figsize=(10, 10))
+            for idx, model in enumerate(modelos):
+                if model==1:
+                    for idxt, t in enumerate(time):
+                        if idx == 0:
+                            val = geomag.dipole(phi, theta, r, year=t)[1]
+                        elif idx == 1:
+                            val = geomag.centered_dipole(phi, theta, r, year=t)[1]
+                        elif idx == 2:
+                            val = geomag.quadrupole(phi, theta, r, year=t)[1]
+                        elif idx == 3:
+                            # val = geomag.octupole(phi, theta, r, year=t)[1]
+                            val = geomag.magnetic_field(phi, theta, r, year=t, N=3)[1]
+                        elif idx == 4:
+                            val = geomag.magnetic_field(phi, theta, r, year=t, N=N)[1]
+
+                        Br[idx, idxt] = val[0]
+                        Btheta[idx, idxt] = val[1]
+                        Bphi[idx, idxt] = val[2]
+
+
+                    axs[0].plot(time, Br[idx, :], list_colors[idx], label=list_modelos[idx])
+                    axs[0].set_ylabel('B_r (nT)')
+                    axs[1].plot(time, Btheta[idx, :], list_colors[idx], label=list_modelos[idx])
+                    axs[1].set_ylabel('B_theta (nT)')
+                    axs[2].plot(time, Bphi[idx, :], list_colors[idx], label=list_modelos[idx])
+                    axs[2].set_ylabel('B_phi (nT)')
+                    
+
+                    legend.append(list_modelos[idx])
+
+            axs[0].legend(legend, loc='upper right')
+            axs[0].set_title('Campo magnético')
+            axs[2].set_xlabel('Año')
+
+            axs[0].grid( which='major', axis='both')
+            axs[1].grid( which='major', axis='both')
+            axs[2].grid( which='major', axis='both')
 
         plt.show()
 
@@ -1200,12 +1235,12 @@ if __name__ == '__main__':
     print(geomag.dipole(10, 10, 7000, year=2020))
     print(geomag.centered_dipole(10, 10, 7000, year=2020))
     print('quadrupole')
-    print(geomag.quadrupole(10, 10, 7000, year=2020))
+    print(geomag.quadrupole(16, 30, 7500, year=2021))
     print('octupole')
-    print(geomag.octupole(10, 10, 7000, year=2020))
+    print(geomag.octupole(16, 30, 7500, year=2021))
 
 
-    print(geomag.magnetic_field(10, 10, 7000,year=2020, N=3))
+    print(geomag.magnetic_field(16, 30, 7500,year=2021, N=3))
     # a, b = geomag.gauss_norm_ass_leg_poly(2, np.pi/4)
 
     # print(geomag.magnet(7000, 10, 10, N=3))
@@ -1219,6 +1254,7 @@ if __name__ == '__main__':
 
     geomag.plotMagneticField(val=[10, 10, 7000], 
                              year=2020, 
-                             N=5, 
-                             modelos= [1, 1, 1, 0, 0], 
-                             timeRange=[1900, 2025])
+                             N=13, 
+                             modelos= [1, 1, 1, 1, 1], 
+                             timeRange=[1900, 2025],
+                             absolute_value=False)
