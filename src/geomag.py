@@ -18,7 +18,7 @@ class Geomag:
     def __init__(self):
         '''This function initializes the class'''
         # We define the constants
-        self.Re = 6378.137
+        self.Re = 6371.2
         self.url = self.get_all_txt_from_url()
         self.data = self.get_txt()
   
@@ -655,9 +655,9 @@ class Geomag:
         Btheta = 0
         Bphi = 0
 
-        for n in range(1, N +1): # m is the degree of the spherical harmonic function
-            for m in range(0, min([n + 1, N + 1])): # n is the order of the spherical harmonic function
-                if n >= m:
+        for m in range(N+1):
+            for n in range(1, N+1):
+                if m <= n:
                     gh = self.get_gh_norm(n, m, year, 'b')
                     g = gh['g']
 
@@ -676,95 +676,12 @@ class Geomag:
                     else:
                         Bphi -= (self.Re/r)**(n+2) * (-m*g*np.sin(m*phi) + h*m*np.cos(m*phi)) * Pnm[n, m] / np.sin(theta)
 
-                    print(n, m, Br, Btheta, Bphi)
+                    # print(n, m, Br, Btheta, Bphi)
 
         Bvector = np.array([Br, Btheta, Bphi])
         Bmodule = np.linalg.norm(Bvector)
 
         return Bmodule, Bvector
-    
-
-    def magnet(self, r, theta, phi, year=2020, N=13):
-        '''This function calculates the magnetic field at a given location
-        Parameters
-        ----------
-        r : float
-            The distance from the center of the Earth to the point where to calculate the magnetic field (in km)
-        theta : float
-            The latitude measured in degrees positive from equator (in degrees)
-        phi : float
-            Longitude measured in degrees positive east from Greenwich (in degrees)
-        year : float or int
-            The year for which to calculate the coefficients
-        N : int
-            The order of the magnetic field to calculate
-        Returns
-        -------
-        B : float
-            The magnetic field at the given location
-        '''
-        # Checks to see if located at either pole to avoid singularities
-        if -0.00000001 < theta < 0.00000001:
-            theta = 0.00000001
-        elif 179.99999999 < theta < 180.00000001:
-            theta = 179.99999999
-        # The angles must be converted from degrees into radians
-        theta = (90 - theta) * np.pi / 180
-        phi = phi * np.pi / 180
-        a = 6371.2 # Reference radius used in IGRF
-
-        # Initialize each of the variables
-        # Br B in the radial driection
-        # Bt B in the theta direction
-        # Bp B in the phi direction
-        # P The associated Legendre polynomial evaluated at cos(theta)
-        # The nomenclature for the recursive values generally follows
-        # the form P10 = P(n-1,m-0)
-        # dP The partial derivative of P with respect to theta
-        Br = 0; Bt = 0; Bp = 0
-        P11 = 1; P10 = P11
-        dP11 = 0; dP10 = dP11
-        for m in range(N+1):
-            for n in range(1, N+1):
-                if m <= n:
-                # Calculate Legendre polynomials and derivatives recursively
-                    if n == m:
-                        P2 = np.sin(theta) * P11
-                        dP2 = np.sin(theta) * dP11 + np.cos(theta) * P11
-                        P11 = P2; P10 = P11; P20 = 0
-                        dP11 = dP2; dP10 = dP11; dP20 = 0
-                    elif n == 1:
-                        P2 = np.cos(theta) * P10
-                        dP2 = np.cos(theta) * dP10 - np.sin(theta) * P10
-                        P20 = P10; P10 = P2
-                        dP20 = dP10; dP10 = dP2
-                    else:
-                        K = ((n-1)**2-m**2)/((2*n-1)*(2*n-3))
-                        P2 = np.cos(theta) * P10 - K * P20
-                        dP2 = np.cos(theta) * dP10 - np.sin(theta) * P10 - K * dP20
-                        P20 = P10; P10 = P2
-                        dP20 = dP10; dP10 = dP2
-
-                    # Calculate g and h
-
-                    gh = self.get_gh_norm(n, m, year, 'b')
-                    g = gh['g']
-
-                    if m != 0:
-                        h = gh['h']                        
-                    else:
-                        h = 0
-                    # Calculate Br, Bt, and Bp
-                    Br += (a/r)**(n+2)*(n+1)*\
-                    ((g*np.cos(m*phi) + h*np.sin(m*phi))*P2)
-                    Bt += (a/r)**(n+2)*\
-                    ((g*np.cos(m*phi) + h*np.sin(m*phi))*dP2)
-                    Bp += (a/r)**(n+2)*\
-                    (m*(-g*np.sin(m*phi) + h*np.cos(m*phi))* P2)
-                    print(n, m, Br, Bt, Bp)
-        Bt = -Bt
-        Bp = -Bp/np.sin(theta)
-        return Br, Bt, Bp
 
     def gg_to_geo(self, h, gdcolat):
         """
@@ -908,34 +825,26 @@ class Geomag:
 
         return height, beta
     
-    def transformation2NED(self, r, theta, phi, lambdaa, Bvector):
+    def transformation2NED(self, Bvector, epsilon=0):
         '''Transformation of the earth's magnetic field from local tangent plane coordinate to NED
         Parameters
         ----------
-        r : float
-            The distance from the center of the Earth to the point where to calculate the magnetic field (in km)
         theta : float
             The  East longitude of the point where to calculate the magnetic field (in degrees)
-        phi : float
-            The co-elevation of the point where to calculate the magnetic field (in degrees)
-        lambdaa : float
-            Geodetic longitude of the point where to calculate the magnetic field (in degrees)
+        epsilon : float
+            epsilon = lambdaa - delta # Elevation (geodetic latitude)
+                delta = 90 - theta # Declination
+                lambdaa = 90 - phi # Co-elevation
+                (degrees)
         Returns
         -------
         B : float
             The magnetic field at the given location in NED
         '''
 
-        # Convert to radians
-
-
-        delta = 90 - theta # Declination
-        epsilon = lambdaa - delta # Elevation (geodetic latitude)
-
         if epsilon > 0.2:
             print('Warning: The elevation is higher than 0.2 degrees')
 
-        delta = np.radians(delta)
         epsilon = np.radians(epsilon)
 
         Br = Bvector[0]
@@ -1105,7 +1014,8 @@ class Geomag:
         BzB = -pitch*BxO + roll*ByO + BzO
 
         return np.array([BxB, ByB, BzB])
-    def xyz2dhif(x, y, z):
+    
+    def xyz2dhif(self, x, y, z):
         '''Calculate D, H, I and F from (X, Y, Z)
         
         Based on code from D. Kerridge, 2019
@@ -1132,6 +1042,40 @@ class Geomag:
         
         return np.degrees(dec), hoz, np.degrees(inc), eff
     
+    def printresults(self, phi, theta, r, year=2021, N=3):
+        '''This function prints the magnetic field at a given location
+        Parameters
+        ----------
+        val : array
+            The location where to calculate the magnetic field
+            [theta, phi, r]
+        Returns
+        -------
+        Geomagnetic field values at: 10.0� / 10.0�, at altitude 7000.0, for 2020.0
+        Declination (D):-0.63�
+        Inclination (I):-1.06�
+        Horizontal intensity (H): 24435.2nT
+        Total intensity (F)     : 24439.4nT
+        North component (X)     : 24433.7nT
+        East component (Y)      :  -268.7nT
+        Vertical component (Z)  :  -454.0nT
+        '''
+
+        rtp = self.magnetic_field(phi, theta, r, year=year, N=N)[1]
+
+        xyz = self.transformation2NED(rtp)
+
+        dhif = self.xyz2dhif(xyz[0], xyz[1], xyz[2])
+
+        print('Geomagnetic field values at: ' + str(phi) + ' / ' + str(theta) + ', at altitude ' + str(r) + ', for ' + str(year))
+        print('Declination (D): ' + str(dhif[0]) + ' degrees')
+        print('Inclination (I): ' + str(dhif[2]) + ' degrees')
+        print('Horizontal intensity (H): ' + str(dhif[1]) + ' nT')
+        print('Total intensity (F): ' + str(dhif[3]) + ' nT')
+        print('North component (X): ' + str(xyz[0]) + ' nT')
+        print('East component (Y): ' + str(xyz[1]) + ' nT')
+        print('Vertical component (Z): ' + str(xyz[2]) + ' nT')
+    
     def plotMagneticField(self, val, year=2020, N=13, modelos=[1, 0, 0, 0, 1], timeRange=[1900, 2025], absolute_value=False):
         '''This function plots the magnetic field at a given location
         Parameters
@@ -1156,6 +1100,22 @@ class Geomag:
         absolute_value : bool
             If True the absolute value of the magnetic field will be plotted
         Returns
+        -------
+        Br : array
+            The radial component of the magnetic field
+        Btheta : array
+            The theta component of the magnetic field
+        Bphi : array
+            The phi component of the magnetic field
+
+        Examples
+        --------
+        geomag.plotMagneticField(val=[10, 10, 7000], 
+                            year=2020, 
+                            N=13, 
+                            modelos= [1, 0, 0, 0, 0], 
+                            timeRange=[2020, 2025],
+                            absolute_value=True)
         '''
 
         phi = val[0]
@@ -1165,7 +1125,7 @@ class Geomag:
         start = timeRange[0]
         end = timeRange[1]
 
-        ntotal = 10000
+        ntotal = 1000
         time = np.linspace(start, end, ntotal)
 
         Br = np.zeros([len(modelos), len(time)])
@@ -1193,14 +1153,14 @@ class Geomag:
                         elif idx == 4:
                             val = self.magnetic_field(phi, theta, r, year=t, N=N)[0]
 
-                        Br[idx, idxt] = val[0]
+                        Br[idx, idxt] = val
 
 
                     axs.plot(time, Br[idx, :], list_colors[idx], label=list_modelos[idx])
 
                     legend.append(list_modelos[idx])
 
-            axs[0].set_ylabel('B (nT)')
+            axs.set_ylabel('B (nT)')
             axs.legend(legend, loc='upper right')
             axs.set_title('Campo magnético')
             axs.set_xlabel('Año')
@@ -1223,6 +1183,7 @@ class Geomag:
                             val = geomag.magnetic_field(phi, theta, r, year=t, N=3)[1]
                         elif idx == 4:
                             val = geomag.magnetic_field(phi, theta, r, year=t, N=N)[1]
+                            # val = geomag.magnet(r, theta, phi, year=t, N=N)
 
                         Br[idx, idxt] = val[0]
                         Btheta[idx, idxt] = val[1]
@@ -1250,7 +1211,6 @@ class Geomag:
         plt.show()
 
         return Br, Btheta, Bphi
-
                                               
 
 if __name__ == '__main__':
@@ -1261,12 +1221,13 @@ if __name__ == '__main__':
     print(geomag.dipole(10, 10, 7000, year=2020))
     print(geomag.centered_dipole(10, 10, 7000, year=2020))
     print('quadrupole')
-    print(geomag.quadrupole(16, 30, 7500, year=2021))
+    print(geomag.quadrupole(10, 10, 7000, year=2020))
     print('octupole')
-    print(geomag.octupole(16, 30, 7500, year=2021))
+    print(geomag.octupole(10, 10, 7000, year=2020))
 
+    print(geomag.transformation2NED(geomag.magnetic_field(10, 10, 7000, N=12, year=2020)[1]))
 
-    print(geomag.magnetic_field(16, 30, 7500,year=2021, N=3))
+    geomag.printresults(10, 10, 7000, year=2020, N=13)
     # a, b = geomag.gauss_norm_ass_leg_poly(2, np.pi/4)
 
     # print(geomag.magnet(7000, 10, 10, N=3))
@@ -1277,10 +1238,6 @@ if __name__ == '__main__':
 
    # Ejecutar la variación del campo magnético en un punto desde 2000 hasta 2025 con el modelo dipolo
 
+    
 
-    geomag.plotMagneticField(val=[10, 10, 7000], 
-                             year=2020, 
-                             N=13, 
-                             modelos= [1, 1, 1, 1, 1], 
-                             timeRange=[1900, 2025],
-                             absolute_value=False)
+
