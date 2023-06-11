@@ -11,6 +11,7 @@ from bs4 import BeautifulSoup
 import re
 from pathlib import Path
 import matplotlib.pyplot as plt
+import os
 
 class Geomag:
     '''This class contains the functions necessary to calculate the magnetic field'''
@@ -1042,13 +1043,143 @@ class Geomag:
         
         return np.degrees(dec), hoz, np.degrees(inc), eff
     
-    def printresults(self, phi, theta, r, year=2021, N=3):
+    def arrayofpoints(self, phi, theta, r, year=2020, N=3, savedata=False):
+        '''This function calculates the magnetic field at multiple locations
+        Parameters
+        ----------
+        phi : array
+            Longitude measured in degrees positive east from Greenwich (in degrees)
+        theta : array
+            The latitude measured in degrees positive from equator (in degrees)
+        r : array
+            The distance from the center of the Earth to the point where to calculate the magnetic field (in km)
+        N : int
+            The order of the magnetic field to calculate
+        savedata : bool
+            Save the data to a file
+        Returns
+        -------
+        B : float
+            The magnetic field at the given location
+        '''
+
+        # Checks the length of the arrays
+        if len(phi) != len(theta) or len(phi) != len(r) or len(theta) != len(r):
+            raise ValueError('The arrays must have the same length')
+        
+        # Checks to see if located at either pole to avoid singularities
+        for theta_i in theta:
+            if -0.00000001 < theta_i < 0.00000001:
+                theta_i = 0.00000001
+            elif 179.99999999 < theta_i < 180.00000001:
+                theta_i = 179.99999999
+
+        # Convert to radians
+        phi = np.radians(phi)
+        theta = np.radians(90 - theta)
+        
+        # Verify the limits of the input
+        for r_i in r:
+            if r_i < 0:
+                raise ValueError('The distance must be positive')
+            if r_i < self.Re:
+                raise ValueError('The distance must be higher than the radius of the Earth')
+            
+        for phi_i in phi:
+            if phi_i <= -np.pi/2 or phi_i >= np.pi/2:
+                raise ValueError('The co-elevation must be between -90 and 90')
+        
+        for theta_i in theta:
+            if theta_i <= -np.pi or theta_i >= np.pi:
+                raise ValueError('The longitude must be between -180 and 180')
+        
+        B_array = np.zeros((3, len(phi)))
+        for i in range(len(phi) + 1):
+            B = self.magnetic_field(phi, theta, r, year=year, N=N)[0]
+
+            B_array[0, i] = B[0]
+            B_array[1, i] = B[1]
+            B_array[2, i] = B[2]
+
+        if savedata:
+            path = os.getcwd() + '/results/B_array_latlon.txt'
+            np.savetxt(path, B_array)
+
+        return B_array
+    
+    def arrayDatesAtLocation(self, val, years, N=3, savedata=False):
+        '''This function calculates the magnetic field at one location for multiple dates
+        Parameters
+        ----------
+        val : array
+            The location where to calculate the magnetic field
+            [theta, phi, r]
+        years : array
+            The year for which to calculate the coefficients
+        N : int
+            The order of the magnetic field to calculate
+        savedata : bool
+            Save the data to a file
+        Returns
+        -------
+        B : float
+            The magnetic field at the given location
+        '''
+
+        # Checks the bounds of the input
+        if len(val) != 3:
+            raise ValueError('The array must have 3 elements')
+        
+        # Checks to see if located at either pole to avoid singularities
+        if -0.00000001 < val[0] < 0.00000001:
+            val[0] = 0.00000001
+        elif 179.99999999 < val[0] < 180.00000001:
+            val[0] = 179.99999999
+
+        # Convert to radians
+        val[1] = np.radians(val[1])
+        val[0] = np.radians(90 - val[0])
+
+        # Verify the limits of the input
+        if val[2] < 0:
+            raise ValueError('The distance must be positive')
+        if val[2] < self.Re:
+            raise ValueError('The distance must be higher than the radius of the Earth')
+        
+        if val[1] <= -np.pi/2 or val[1] >= np.pi/2:
+            raise ValueError('The co-elevation must be between -90 and 90')
+        
+        if val[0] <= -np.pi or val[0] >= np.pi:
+            raise ValueError('The longitude must be between -180 and 180')
+        
+        B_array = np.zeros((len(years), 4))
+
+        for i, year in enumerate(years):
+            B = self.magnetic_field(val[1], val[0], val[2], year=year, N=N)[1]
+
+            B_array[i, 0] = year
+            B_array[i, 1] = B[0]
+            B_array[i, 2] = B[1]
+            B_array[i, 3] = B[2]
+
+        if savedata:
+            path = os.getcwd() + '/results/B_array_dates.txt'
+            np.savetxt(path, B_array)
+
+    
+    def printresults(self, phi, theta, r, year=2021, N=3, savedata=False):
         '''This function prints the magnetic field at a given location
         Parameters
         ----------
         val : array
             The location where to calculate the magnetic field
             [theta, phi, r]
+        year : float or int
+            The year for which to calculate the coefficients
+        N : int
+            The order of the magnetic field to calculate
+        savedata : bool
+            Save the data to a file      
         Returns
         -------
         Geomagnetic field values at: 10.0� / 10.0�, at altitude 7000.0, for 2020.0
@@ -1060,6 +1191,8 @@ class Geomag:
         East component (Y)      :  -268.7nT
         Vertical component (Z)  :  -454.0nT
         '''
+
+        filename = input('file name to save results: ')
 
         rtp = self.magnetic_field(phi, theta, r, year=year, N=N)[1]
 
@@ -1075,6 +1208,22 @@ class Geomag:
         print('North component (X): ' + str(xyz[0]) + ' nT')
         print('East component (Y): ' + str(xyz[1]) + ' nT')
         print('Vertical component (Z): ' + str(xyz[2]) + ' nT')
+
+        if savedata:
+            path = os.getcwd() + '/results/' + filename + '.txt'
+
+            # Write to file
+            with open(path, 'w') as f:
+                f.write('Geomagnetic field values at: ' + str(phi) + ' / ' + str(theta) + ', at altitude ' + str(r) + ', for ' + str(year) + '\n')
+                f.write('Declination (D): ' + str(dhif[0]) + ' degrees\n')
+                f.write('Inclination (I): ' + str(dhif[2]) + ' degrees\n')
+                f.write('Horizontal intensity (H): ' + str(dhif[1]) + ' nT\n')
+                f.write('Total intensity (F): ' + str(dhif[3]) + ' nT\n')
+                f.write('North component (X): ' + str(xyz[0]) + ' nT\n')
+                f.write('East component (Y): ' + str(xyz[1]) + ' nT\n')
+                f.write('Vertical component (Z): ' + str(xyz[2]) + ' nT\n')
+
+                print('Results saved to ' + filename + '.txt')
     
     def plotMagneticField(self, val, year=2020, N=13, modelos=[1, 0, 0, 0, 1], timeRange=[1900, 2025], absolute_value=False):
         '''This function plots the magnetic field at a given location
@@ -1227,16 +1376,9 @@ if __name__ == '__main__':
 
     print(geomag.transformation2NED(geomag.magnetic_field(10, 10, 7000, N=12, year=2020)[1]))
 
-    geomag.printresults(10, 10, 7000, year=2020, N=13)
-    # a, b = geomag.gauss_norm_ass_leg_poly(2, np.pi/4)
+    # geomag.printresults(10, 10, 7000, year=2020, N=13)
 
-    # print(geomag.magnet(7000, 10, 10, N=3))
-    # Earth radius value (6)
-    
-   # valNED = geomag.transformation2NED(7000, 10, 10, 0, geomag.magnetic_field(10, 10, 7000, N=12)[1])
-   # print(valNED)
-
-   # Ejecutar la variación del campo magnético en un punto desde 2000 hasta 2025 con el modelo dipolo
+    geomag.arrayDatesAtLocation([10, 10, 7000], years=[2020, 2021, 2022, 2023, 2024, 2025], N=13, savedata=True)
 
     
 
