@@ -1,37 +1,40 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
-from scipy.special import lpn, factorial, lpmn
+from scipy.special import lpn, factorial
+import pandas as pd
+import os
 
 class Geopot():
     '''Class to calculate the potential arround the Earth'''
 
-    def __init__(self, body):
-        self.mu = body.mu * 1e9  # Gravitational parameter [m^3/s^2]
-        self.a = 6378136.3         # Earth equatorial radius [m]
+    def __init__(self):
+        self.mu = 3.986004415e14  # Gravitational parameter [m^3/s^2]
+        self.a = 6.3781363e6         # Earth equatorial radius [m]
 
     def gravitational_potential(self, r, elevation, azimuth, order=None):
         '''Gravitational potential 4.42
         Args:
-            r: radius [m]
-            elevation: elevation angle [rad]
-            azimuth: azimuth angle [rad]
+            r: radius [km]
+            elevation: elevation angle [degrees]
+            azimuth: azimuth angle [degrees]
             order: order of the expansion
         Returns:
             Gravitational potential [m^2/s^2]
             Gravitational acceleration [m/s^2]
         '''
         
-        self.r = r                 # Radius [m]
-        self.elev = elevation      # Elevation angle [rad]
-        self.azi = azimuth         # Azimuth angle [rad]
+        self.r = r * 1000                # Radius [m]
+        self.elev = np.radians(elevation)      # Elevation angle [rad]
+        self.azi = np.radians(azimuth)         # Azimuth angle [rad]
         
         self.grav = np.array([-self.mu / self.r**2, 0, 0])
-        self.pot = -self.mu / self.r
+        self.pot = self.mu / self.r
         self.pot_ideal = self.pot
 
         # Read the data
         data = np.loadtxt('data\egm96_to360.ascii.txt')
+
         n, m = np.shape(data)  # Number of rows and columns
 
         # Max column 1 and 2
@@ -73,8 +76,11 @@ class Geopot():
             #print(self.pot)
             #print(self.grav)
 
-        print(f'Gravedad en valor absoluto: {np.linalg.norm(self.grav)}')
-        print(f'Potencial: {self.pot}')
+        print(f'Gravedad: {self.grav} m/s^2')
+        print(f'Gravedad en valor absoluto: {np.linalg.norm(self.grav)} m/s^2')
+        print(f'Potencial: {self.pot} m^2/s^2')
+
+        return self.pot, self.grav
 
     def legendre(self, N, x):
         '''Legendre polynomials
@@ -136,6 +142,55 @@ class Geopot():
                         Pd[m, n] = 0
         
         return P, Pd
+    
+    def arraylatlong(self, lat, lon, r, order=15, savedata=False):
+        '''Calculate the potential and gravity field
+        Parameters:
+        ----------
+        lat: array [degrees]
+            Latitude
+        lon: array [degrees]
+            Longitude
+        r : array [km]
+            Radius
+        order: int
+            Order of the expansion
+        Returns:
+        -------
+        values: list
+            List with the values of the potential or gravity field
+        '''
+
+        # check if the input is a list with the same length
+        if len(lat) != len(lon) or len(lat) != len(r):
+            raise ValueError('The length of the input must be the same')
+        
+        # check singularities
+        if np.any(lat > 90) or np.any(lat < -90):
+            raise ValueError('Latitude must be between -90 and 90')
+        if np.any(lon > 180) or np.any(lon < -180):
+            raise ValueError('Longitude must be between -180 and 180')
+        if np.any(r < 0):
+            raise ValueError('Radius must be positive')
+        
+        for latt in lat:
+            if latt == 0:
+                latt = 1e-8
+
+        values = []
+        for i in range(len(lat)):
+            self.gravitational_potential(r[i], lat[i], lon[i], order=order)
+            values.append([r[i], lat[i], lon[i], self.pot, self.grav[0], self.grav[1], self.grav[2]])
+
+        if savedata:
+            path = os.getcwd() + '/results/dataEGM96.txt'
+            data = pd.DataFrame(values, columns=['r km', 'Lat', 'Long', 'Potencias', 'g1', 'g2', 'g3'])
+            data.to_csv(path)
+
+
+        return values
+
+
 
     def calculate(self, resolucion=90, order=20, option='potential'):
         '''Calculate the potential and gravity field
@@ -155,16 +210,15 @@ class Geopot():
 
         # Create some longitude, latitude, and third data
         elevacion = np.linspace(-180, 180, resolucion)
-        elev_rad = elevacion* np.pi / 180
+
         azimuth = np.linspace(-90, 90, resolucion)
-        azi_rad = azimuth* np.pi / 180
 
         values = []
 
         cont = 0
 
-        for i, lat in enumerate(elev_rad):
-            for j, lon in enumerate(azi_rad):
+        for i, lat in enumerate(elevacion):
+            for j, lon in enumerate(azimuth):
                 print(f'Calculando {i} de {len(elevacion)} y {j} de {len(azimuth)}')
                 self.gravitational_potential(self.a ,lon, lat, order=order)
 
@@ -193,7 +247,7 @@ class Geopot():
         # data = [elev, azi, third_data]
 
         return elev, azi, third_data
-
+   
     def plot_potential(self, data, dtype='2D'):
         '''Plot the potential arround the Earth
         Parameters:
@@ -231,7 +285,7 @@ class Geopot():
                 ax.imshow(img, extent=[-180, 180, -90, 90], zorder=0)
 
                 # Plot the longitude, latitude, and third data with 50% transparency
-                sc = ax.scatter(azi*180/np.pi, elev*180/np.pi, c=third_data, cmap='viridis', alpha=0.5, zorder=1)
+                sc = ax.scatter(azi*180/np.pi, elev*180/np.pi, c=third_data, cmap='viridis', alpha=0.3, zorder=1)
 
                 # Add a color bar for the third data
                 cbar = plt.colorbar(sc)
@@ -240,8 +294,9 @@ class Geopot():
                 # Set the limits and label of the axis
                 ax.set_xlim(-180, 180)
                 ax.set_ylim(-90, 90)
-                ax.set_xlabel('Elevation')
-                ax.set_ylabel('Azimuth')
+                ax.set_xlabel('Elevación º')
+                ax.set_ylabel('Azimut º')
+                ax.set_title('Potencial alrededor de la Tierra')
 
                 # Show the plot
                 plt.show()
@@ -279,6 +334,7 @@ class Geopot():
                 ax.set_xlabel('Eje X')
                 ax.set_ylabel('Eje Y')
                 ax.set_zlabel('Eje Z')
+                ax.set_title('Potencial alrededor de la Tierra')
 
                 # Muestra el gráfico
                 plt.show()
@@ -306,9 +362,9 @@ class Geopot():
         None
         '''
 
-        str_name = "data/" + str(name) + ".txt"
+        str_name = "results/" + str(name) + ".txt"
 
-        with open('data/data.txt', 'w') as f:
+        with open(str_name, 'w') as f:
             for i in range(len(list1)):
                 line = str(list1[i]) + ',' + str(list2[i]) + ',' + str(list3[i]) + '\n'
                 f.write(line)
@@ -328,7 +384,7 @@ class Geopot():
             List with the data
         '''
 
-        path = "data/" + str(name) + ".txt"
+        path = "results/" + str(name) + ".txt"
 
         with open(path, 'r') as f:
             data = f.readlines()
@@ -352,22 +408,24 @@ class Geopot():
 
 
 if __name__ == '__main__':
-    from src.CelestialBodies import CelestialBodies
 
-    Tierra = CelestialBodies()
-    Tierra.earth()
-
-    Potencial = Geopot(Tierra)
+    Potencial = Geopot()
 
     val = Potencial.legendre(3, 0)
 
-    # Potencial.gravitational_potential(7000000 ,1 , 1, 20)
+    Potencial.gravitational_potential(7000 ,10 , 10, 360)
 
-    #data1, data2, data3 = Potencial.calculate(resolucion=90, order=20, option='gravity')
+    Potencial.arraylatlong(np.linspace(-90, 90, 19),
+                           np.linspace(-180, 180, 19), 
+                           7000*np.ones_like(np.linspace(-180, 180, 19)), 
+                           order=15, 
+                           savedata=True)
 
-    #Potencial.write_data('gravity', data1, data2, data3)
+    data1, data2, data3 = Potencial.calculate(resolucion=40, order=15, option='gravity')
 
-    data = Potencial.read_data('data')
+    Potencial.write_data('gravity.txt', data1, data2, data3)
+
+    data = Potencial.read_data('gravity')
     #data = [data1, data2, data3]
 
     Potencial.plot_potential(data, dtype='2D')
