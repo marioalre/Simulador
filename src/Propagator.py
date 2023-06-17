@@ -197,7 +197,19 @@ class Propagator(Orbit):
         return Rs, Vs, Ts
     
     def cowell(self, t, k):
-        '''Cowell method to propagate the orbit from poliastro'''
+        '''Cowell method to propagate the orbit from poliastro
+        Parameters
+        ----------
+        t : ndarray
+            Time vector in s
+        k : float
+            Standard gravitational parameter
+        Returns
+        -------
+        rrs : list
+            List of position vectors in km
+        vvs : list
+            List of velocity vectors in km/s'''
 
         # Initial conditions
         x, y, z = self.R0

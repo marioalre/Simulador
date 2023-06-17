@@ -95,7 +95,7 @@ def ConvTime(date, UTC, dUT1, dAT, time_system='UT1'):
         print('Time system not recognized')
 
 
-def J0(year, month, day, h, m, s):
+def J0(year, month, day, h=0, m=0, s=0):
     '''This function calculates the Julian date of a given date at 0h UT. 
     Between 1900 and 2100.
     Parameters
