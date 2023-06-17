@@ -17,51 +17,49 @@ def opciones1():
     print("6. Salir")
 
     while True:
-        opcion = input("Opcion: ")
-        if opcion == '1':
-            print("Dipolo")
-            # Se necesita el radio de la tierra, la latitud y longitud
-            lat, long, h = latlongh()
-            year = year()
-            val = geomag.dipole(h, lat, long, year)[1]
-            break
-        elif opcion == '2':
-            print("Dipolo centrado")
-            lat, long, h = latlongh()
-            year = year()
-            val = geomag.centered_dipole(h, lat, long, year)[1]
-            break
-        elif opcion == '3':
-            print("Cuadripolo")
-            lat, long, h = latlongh()
-            year = year()
-            val = geomag.quadrupole(h, lat, long, year)[1]
-            break
-        elif opcion == '4':
-            print("Octupolo")
-            lat, long, h = latlongh()
-            year = year()
-            val = geomag.octupole(h, lat, long, year)[1]
-            break
-        elif opcion == '5':
-            print("Modelo completo")
-            lat, long, h = latlongh()
-            year = year()
-            val = geomag.magnetic_field(h, lat, long, year, N=13)[1]
-            break
-        elif opcion == '6':
-            print("Saliendo del programa")
-            sys.exit()
-        else:
-            print("Opcion no valida")
-            print("Seleccione una opcion:")
-            print("1. Dipolo")
-            print("2. Dipolo centrado")
-            print("3. Cuadripolo")
-            print("4. Octupolo")
-            print("5. Modelo completo")
+        try:
+            opcion = input("Opcion: ")
 
-        geomag.printresults(val, savedata=True)
+            lat, long, h = latlongh()
+            year = yearf()
+
+            if opcion == '1':
+                print("Dipolo")
+                # Se necesita el radio de la tierra, la latitud y longitud
+                val = geomag.dipole(h, lat, long, year)[1]
+                break
+            elif opcion == '2':
+                print("Dipolo centrado")
+                val = geomag.centered_dipole(h, lat, long, year)[1]
+                break
+            elif opcion == '3':
+                print("Cuadripolo")
+                val = geomag.quadrupole(h, lat, long, year)[1]
+                break
+            elif opcion == '4':
+                print("Octupolo")
+                val = geomag.octupole(h, lat, long, year)[1]
+                break
+            elif opcion == '5':
+                print("Modelo completo")
+                val = geomag.magnetic_field(h, lat, long, year, N=13)[1]
+                break
+            elif opcion == '6':
+                print("Saliendo del programa")
+                sys.exit()
+            else:
+                print("Opcion no valida")
+                print("Seleccione una opcion:")
+                print("1. Dipolo")
+                print("2. Dipolo centrado")
+                print("3. Cuadripolo")
+                print("4. Octupolo")
+                print("5. Modelo completo")
+
+            print("Guardando datos en results/magPoint.txt")
+            geomag.printresults(val, savedata=True)
+        except ValueError:
+            print("Introduzca un valor válido")
 
 
 def opciones2():
@@ -76,38 +74,41 @@ def opciones2():
     print("3. Introductir puntos manualmente")
 
     while True:
-        opcion = input("Opcion: ")
-        if opcion == '1':
-            print("Crear array de puntos")
-            lat, long, h, year = opcion211()
+        try:
+            opcion = input("Opcion: ")
+            if opcion == '1':
+                print("Crear array de puntos")
+                lat, long, h, year = opcion211()
 
-        elif opcion == '2':
-            print("Leer array de puntos")
-            lat, long, h, year = opcion212()
+            elif opcion == '2':
+                print("Leer array de puntos")
+                lat, long, h, year = opcion212()
 
-        elif opcion == '3':
-            print("Introductir puntos manualmente")
-            lat = []
-            long = []
-            h = []
-            while True:
-                try:
-                    n = int(input("Numero de puntos: "))
-                    for i in range(n):
-                        lati, longi, hi, yeari = opcion211()
-                        lat.append(lati)
-                        long.append(longi)
-                        h.append(hi)
-                    year = float(input("Año: [decimal]"))
+            elif opcion == '3':
+                print("Introductir puntos manualmente")
+                lat = []
+                long = []
+                h = []
+                while True:
+                    try:
+                        n = int(input("Numero de puntos: "))
+                        for i in range(n):
+                            lati, longi, hi, yeari = latlongh()
+                            lat.append(lati)
+                            long.append(longi)
+                            h.append(hi)
+                        year = float(input("Año: [decimal]"))
 
-                except ValueError:
-                    print("Introduzca un valor válido")
-        else:
-            print("Opcion no valida")
-            print("Seleccione una opcion:")
-            print("1. Crear array de puntos")
-            print("2. Leer array de puntos")
-            print("3. Introductir puntos manualmente")
+                    except ValueError:
+                        print("Introduzca un valor válido")
+            else:
+                print("Opcion no valida")
+                print("Seleccione una opcion:")
+                print("1. Crear array de puntos")
+                print("2. Leer array de puntos")
+                print("3. Introductir puntos manualmente")
+        except ValueError:
+            print("Introduzca un valor válido")
 
         geomag.arrayofpoints(h, lat, long, year, N=13, savedata=True)[1]
         print("Datos guardados en results/geomag.csv")
@@ -163,27 +164,35 @@ def opcion212():
 
 def opciones3():
     '''Campo magnético a lo largo del tiempo en un punto'''
-    
-    # Preguntar al usuario el punto
-    lat, long, h = latlongh()
+    while True:
+        try:
+            # Preguntar al usuario el punto
+            lat, long, h = latlongh()
 
-    tmin, tmax, n = timerange()
-    
-    # Crear array de tiempos
-    t = np.linspace(tmin, tmax, n)
+            tmin, tmax, n = timerange()
+            
+            # Crear array de tiempos
+            t = np.linspace(tmin, tmax, n)
 
-    # Calcular campo magnético
-    geomag.arrayDatesAtLocation([h, lat, long] , t, N=13, savedata=True)
+            # Calcular campo magnético
+            geomag.arrayDatesAtLocation([h, lat, long] , t, N=13, savedata=True)
+            break
+        except ValueError:
+            print("Introduzca un valor válido")
 
 def opciones4():
 
-    lat, long, h, = latlongh()
+    while True:
+        try:
+            lat, long, h, = latlongh()
 
-    tmin, tmax, n = timerange()
-    # Crear array de tiempos
-    
-    geomag.plotMagneticField([h, lat, long], tmin, N=13, modelos=[1, 1, 1, 1,1], timeRange= [tmin, tmax])
-
+            tmin, tmax, n = timerange()
+            # Crear array de tiempos
+            
+            geomag.plotMagneticField([h, lat, long], tmin, N=13, modelos=[1, 1, 1, 1,1], timeRange= [tmin, tmax])
+            break
+        except ValueError:
+            print("Introduzca un valor válido")
 # Función que pide al usuario en grados la latitud, longitud y altura
 
 def latlongh():
@@ -199,7 +208,7 @@ def latlongh():
             print("Introduzca un valor válido")
     return lat, long, h
 
-def year():
+def yearf():
     while True:
         try:
             year = float(input("Año: [decimal]"))

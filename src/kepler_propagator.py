@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import math
 from src.utilities import Utilities
 
@@ -321,7 +322,7 @@ class KeplerPropagator:
 
         return nu, E
 
-    def kepler(self, R, V, dt):
+    def kepler(self, R, V, dt, savedata=False):
         '''Compute the classical orbital elements from the initial state and time
         universal variable
         Parameters
@@ -387,6 +388,16 @@ class KeplerPropagator:
 
         R_final = f * R + g * V
         V_final = df * R + dg * V
+
+        print('r =', R_final, 'km')
+        print('v =', V_final, 'km/s')
+
+        if savedata:
+            # Save data to file .csv
+            data = np.array([R_final, V_final])
+            np.savetxt('results/kepler.csv', data, delimiter=',')
+            print('Datos guardados en results/kepler.csv')
+            print('\n')
 
         return R_final, V_final
 
@@ -811,7 +822,7 @@ class KeplerPropagator:
         return r, v
 
 
-    def Pkepler(self, ro, vo, dtsec, ndot, nddot):
+    def Pkepler(self, ro, vo, dtsec, ndot=0, nddot=0, savedata=False):
         re = self.radius         # km
         mu = self.mu      # km3/s2
         j2 = self.body.J2      # km5/s2
@@ -865,9 +876,18 @@ class KeplerPropagator:
 
         # Use coe2rv to find new
 
-        return self.coe2rv(p, e, i, Omega, omega, nu, arglat, lonper, truelon)
+        r, v = self.coe2rv(p, e, i, Omega, omega, nu, arglat, lonper, truelon)
 
-    def propagate(self, r0, v0, tf, dt, dn, ddn):
+        if savedata:
+            # Save data to file .csv
+            data = np.array([r, v])
+            np.savetxt('results/Pkepler.csv', data, delimiter=',')
+            print('Datos guardados en results/Pkepler.csv')
+            print('\n')
+
+        return 
+
+    def propagate(self, r0, v0, tf, dt, dn=0, ddn=0, type='Pkepler', savedata=True):
         '''Propagate the orbit forward in time
 
         Parameters
@@ -884,6 +904,10 @@ class KeplerPropagator:
             First derivative of mean motion vector
         ddn : float
             Second derivative of mean motion vector 
+        type : str
+            Type of propagator
+            'Pkepler' : Perturbed Keplerian
+            'kepler' : Keplerian
         Returns
         -------
         r : float
@@ -906,9 +930,18 @@ class KeplerPropagator:
         v[0, :] = v0
 
         for i, dt in enumerate(time):
-            r0, v0 = self.Pkepler(r0, v0, dt, dn, ddn)
+            if type == 'Pkepler':
+                r0, v0 = self.Pkepler(r0, v0, dt, dn, ddn)
+            elif type == 'kepler':
+                r0, v0 = self.kepler(r0, v0, dt)
             r[i+1 , :] = r0
             v[i+1, :] = v0
+
+        if savedata:
+            # save data to file .csv with a pandas dataframe
+            data = pd.DataFrame({'x': r[:, 0], 'y': r[:, 1], 'z': r[:, 2], 'vx': v[:, 0], 'vy': v[:, 1], 'vz': v[:, 2]})
+            data.to_csv('results/propagate.csv', index=False)
+            print('Datos guardados en results/propagate.csv')
 
         return r, v
     

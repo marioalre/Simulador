@@ -1,8 +1,0 @@
-Geomagnetic field values 
-Declination (D): -4.105825458860056 degrees
-Inclination (I): 7.08442534966506 degrees
-Horizontal intensity (H): 20254.346661666877 nT
-Total intensity (F): 20410.16809653444 nT
-North component (X): 20202.364050782264 nT
-East component (Y): -1450.1880742291905 nT
-Vertical component (Z): 2517.2212929768466 nT

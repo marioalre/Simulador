@@ -81,6 +81,12 @@ class Geopot():
         print(f'Gravedad en valor absoluto: {np.linalg.norm(self.grav)} m/s^2')
         print(f'Potencial: {self.pot} m^2/s^2')
 
+        # Guardar los datos en un archivo csv
+        path = os.getcwd() + '/results/dataEGM96pt.csv'
+
+        data = pd.DataFrame([self.pot, self.grav[0], self.grav[1], self.grav[2]])
+        data.to_csv(path)
+
         return self.pot, self.grav
 
     def legendre(self, N, x):
@@ -201,7 +207,7 @@ class Geopot():
 
 
     
-    def arraylatlong(self, lat, lon, r, order=15, savedata=False):
+    def arraylatlong(self, lat, lon, r, order=15, savedata=True):
         '''Calculate the potential and gravity field
         Parameters:
         ----------
@@ -241,7 +247,7 @@ class Geopot():
             values.append([r[i], lat[i], lon[i], self.pot, self.grav[0], self.grav[1], self.grav[2]])
 
         if savedata:
-            path = os.getcwd() + '/results/dataEGM96.txt'
+            path = os.getcwd() + '/results/dataEGM96.csv'
             data = pd.DataFrame(values, columns=['r km', 'Lat', 'Long', 'Potencias', 'g1', 'g2', 'g3'])
             data.to_csv(path)
 

@@ -90,7 +90,7 @@ class Propagator(Orbit):
         return ad
 
         
-    def Encke(self, R0, V0, dt, trange, perturbations=None):
+    def Encke(self, R0, V0, dt, trange, perturbations=None, save_data=False):
         '''Encke propagation method
         Parameters
         ----------
@@ -192,7 +192,7 @@ class Propagator(Orbit):
             Ts[i+1] = t
 
             i += 1
-            t += dt 
+            t += dt    
 
         return Rs, Vs, Ts
     

@@ -338,10 +338,10 @@ class ECI2ECEF:
         self.aeci = aeci
 
         # Call the auxiliary functions to get the precession, nutation and rotation parameters
-        prec, psia, wa, ea, xa = self.precess(self.ttt, '80')
+        prec, psia, wa, ea, xa = self.precess(self.ttt)
         deltapsi, trueeps, meaneps, omega, nut = self.nutation(self.ttt, self.ddpsi, self.ddeps)
         st, stdot = self.sideral(self.jdut1, deltapsi, meaneps, omega, self.lod, self.eqeterms)
-        pm = self.polarm(self.xp, self.yp, self.ttt, '80')
+        pm = self.polarm(self.xp, self.yp, self.ttt)
 
         # Calculate the angular velocity of the Earth
         thetasa = 7.29211514670698e-05 * (1.0 - self.lod / 86400.0)
@@ -369,10 +369,10 @@ class ECI2ECEF:
         self.aecef = aecef
 
         # Call the auxiliary functions to get the precession, nutation and rotation parameters
-        prec, psia, wa, ea, xa = self.precess(self.ttt, '80')
+        prec, psia, wa, ea, xa = self.precess(self.ttt)
         deltapsi, trueeps, meaneps, omega, nut = self.nutation(self.ttt, self.ddpsi, self.ddeps)
         st, stdot = self.sideral(self.jdut1, deltapsi, meaneps, omega, self.lod, self.eqeterms)
-        pm = self.polarm(self.xp, self.yp, self.ttt, '80')
+        pm = self.polarm(self.xp, self.yp, self.ttt)
 
         # Calculate the angular velocity of the Earth
         thetasa = 7.29211514670698e-05 * (1.0 - self.lod / 86400.0)
@@ -410,7 +410,7 @@ class ECI2ECEF:
         ttt = (JD_tt - 2451545.0) / 36525.0
 
 
-    def precess(self, ttt, opt):
+    def precess(self, ttt):
         '''Based on Vallado's book, Fundamentals of Astrodynamics and Applications, 4th ed., Algorithm 23, p. 211
         and the Matlab code aviable at celestrak.com
 
@@ -436,60 +436,16 @@ class ECI2ECEF:
 
         prec = np.zeros((3, 3))
 
-        # fk4 b1950 precession angles
-        if opt == '50':
-            t1 = 0.0  # (ttt - 2433282.42345905) / 365242.198782
-            t2 = (ttt - 2433282.42345905) / 36525
-            psia = 50.3708 + 0.0050 * ttt
-            wa = 0.0
-            ea = 84428.26 - 46.845 * ttt - 0.00059 * ttt2 + 0.00181 * ttt3
-            xa = 0.1247 - 0.0188 * ttt
-            zeta = (23035.545 + 139.720 * t1 + 0.060 * t1 * t1) * ttt + (30.240 - 0.270 * t1) * ttt2 + 17.995 * ttt3
-            theta = (20051.12 - 85.29 * t1 - 0.37 * t1 * t1) * ttt + (-42.65 - 0.37 * t1) * ttt2 - 41.80 * ttt3
-            z = (23035.545 + 139.720 * t1 + 0.060 * t1 * t1) * ttt + (109.480 + 0.390 * t1) * ttt2 + 18.325 * ttt3
-
-            prec[0, 0] = 1.0 - 2.9696e-4 * ttt2 - 1.3e-7 * ttt3
-            prec[0, 1] = 2.234941e-2 * ttt + 6.76e-6 * ttt2 - 2.21e-6 * ttt3
-            prec[0, 2] = 9.7169e-3 * ttt - 2.07e-6 * ttt2 - 9.6e-7 * ttt3
-            prec[1, 0] = -prec[0, 1]
-            prec[1, 1] = 1.0 - 2.4975e-4 * ttt2 - 1.5e-7 * ttt3
-            prec[1, 2] = -1.0858e-4 * ttt2
-            prec[2, 0] = -prec[0, 2]
-            prec[2, 1] = prec[1, 2]
-            prec[2, 2] = 1.0 - 4.721e-5 * ttt2
-
-            # pass these back out for testing
-            psia = zeta
-            wa = theta
-            ea = z
-
-            return prec
-
         # iau 76 precession angles
-        elif opt == '80':
 
-            psia = 5038.7784 * ttt - 1.07259 * ttt2 - 0.001147 * ttt3
-            wa = 84381.448 + 0.05127 * ttt2 - 0.007726 * ttt3
-            ea = 84381.448 - 46.8150 * ttt - 0.00059 * ttt2 + 0.001813 * ttt3
-            xa = 10.5526 * ttt - 2.38064 * ttt2 - 0.001125 * ttt3
+        psia = 5038.7784 * ttt - 1.07259 * ttt2 - 0.001147 * ttt3
+        wa = 84381.448 + 0.05127 * ttt2 - 0.007726 * ttt3
+        ea = 84381.448 - 46.8150 * ttt - 0.00059 * ttt2 + 0.001813 * ttt3
+        xa = 10.5526 * ttt - 2.38064 * ttt2 - 0.001125 * ttt3
 
-            zeta = 2306.2181 * ttt + 0.30188 * ttt2 + 0.017998 * ttt3
-            theta = 2004.3109 * ttt - 0.42665 * ttt2 - 0.041833 * ttt3
-            z = 2306.2181 * ttt + 1.09468 * ttt2 + 0.018203 * ttt3
-
-
-        # iau 06 precession angles
-        else:
-            oblo = 84381.406
-            psia = (((( -0.0000000951 * ttt + 0.000132851 ) * ttt - 0.00114045 ) * ttt - 1.0790069 ) * ttt + 5038.481507 ) * ttt
-            wa = ((((  0.0000003337 * ttt - 0.000000467 ) * ttt - 0.00772503 ) * ttt + 0.0512623 ) * ttt - 0.025754 ) * ttt + oblo
-            ea = (((( -0.0000000434 * ttt - 0.000000576 ) * ttt + 0.00200340 ) * ttt - 0.0001831 ) * ttt - 46.836769 ) * ttt + oblo
-            xa = (((( -0.0000000560 * ttt + 0.000170663 ) * ttt - 0.00121197 ) * ttt - 2.3814292 ) * ttt + 10.556403 ) * ttt
-
-            zeta = (((( -0.0000003173 * ttt - 0.000005971 ) * ttt + 0.01801828 ) * ttt + 0.2988499 ) * ttt + 2306.083227 ) * ttt + 2.650545
-            theta = (((( -0.0000001274 * ttt - 0.000007089 ) * ttt - 0.04182264 ) * ttt - 0.4294934 ) * ttt + 2004.191903 ) * ttt
-            z = ((((  0.0000002904 * ttt - 0.000028596 ) * ttt + 0.01826837 ) * ttt + 1.0927348 ) * ttt + 2306.077181 ) * ttt - 2.650545
-
+        zeta = 2306.2181 * ttt + 0.30188 * ttt2 + 0.017998 * ttt3
+        theta = 2004.3109 * ttt - 0.42665 * ttt2 - 0.041833 * ttt3
+        z = 2306.2181 * ttt + 1.09468 * ttt2 + 0.018203 * ttt3
 
         # convert from arcseconds to radians
         psia *= convrt
@@ -545,7 +501,7 @@ class ECI2ECEF:
         meaneps = (meaneps / 3600.0) % 360.0
         meaneps = meaneps * deg2rad
 
-        l, l1, f, d, omega, lonmer, lonven, lonear, lonmar, lonjup, lonsat, lonurn, lonnep, precrate = self.fundarg(ttt, '80')
+        l, l1, f, d, omega, lonmer, lonven, lonear, lonmar, lonjup, lonsat, lonurn, lonnep, precrate = self.fundarg(ttt)
 
         deltapsi = 0.0
         deltaeps = 0.0
@@ -608,7 +564,7 @@ class ECI2ECEF:
         return iar80, rar80
     
 
-    def fundarg(self, ttt, opt):
+    def fundarg(self, ttt):
         deg2rad = np.pi / 180.0
 
         # ---- determine coefficients for iau 2000 nutation theory ----
@@ -616,72 +572,20 @@ class ECI2ECEF:
         ttt3 = ttt2 * ttt
         ttt4 = ttt2 * ttt2
 
-        # ---- iau 2006 theory
-        if opt == '06':
-            l = 134.96340251 + (1717915923.2178 * ttt + 31.8792 * ttt2 + 0.051635 * ttt3 - 0.00024470 * ttt4) / 3600.0
-            l1 = 357.52910918 + (129596581.0481 * ttt - 0.5532 * ttt2 - 0.000136 * ttt3 - 0.00001149 * ttt4) / 3600.0
-            f = 93.27209062 + (1739527262.8478 * ttt - 12.7512 * ttt2 + 0.001037 * ttt3 + 0.00000417 * ttt4) / 3600.0
-            d = 297.85019547 + (1602961601.2090 * ttt - 6.3706 * ttt2 + 0.006593 * ttt3 - 0.00003169 * ttt4) / 3600.0
-            omega = 125.04455501 + (-6962890.5431 * ttt + 7.4722 * ttt2 + 0.007702 * ttt3 - 0.00005939 * ttt4) / 3600.0
-
-            lonmer = 252.250905494 + 149472.6746358 * ttt
-            lonven = 181.979800853 + 58517.8156748 * ttt
-            lonear = 100.466448494 + 35999.3728521 * ttt
-            lonmar = 355.433274605 + 19140.299314 * ttt
-            lonjup = 34.351483900 + 3034.90567464 * ttt
-            lonsat = 50.0774713998 + 1222.11379404 * ttt
-            lonurn = 314.055005137 + 428.466998313 * ttt
-            lonnep = 304.348665499 + 218.486200208 * ttt
-            precrate = 1.39697137214 * ttt + 0.0003086 * ttt2
-
-        # ---- iau 2000b theory
-        if opt == '02':
-            l = 134.96340251 + (1717915923.2178 * ttt) / 3600.0
-            l1 = 357.52910918 + (129596581.0481 * ttt) / 3600.0
-            f = 93.27209062 + (1739527262.8478 * ttt) / 3600.0
-            d = 297.85019547 + (1602961601.2090 * ttt) / 3600.0
-            omega = 125.04455501 + (-6962890.2665 * ttt + 7.4722 * ttt ** 2 + 0.007702 * ttt ** 3 - 0.00005939 * ttt ** 4) / 3600.0
-
-            lonmer = 0.0
-            lonven = 0.0
-            lonear = 0.0
-            lonmar = 0.0
-            lonjup = 0.0
-            lonsat = 0.0
-            lonurn = 0.0
-            lonnep = 0.0
-            precrate = 0.0
-
-        # iau 1996 theory
-        if opt == '96':
-            l = 134.96340251 + (1717915923.2178 * ttt + 31.8792 * ttt ** 2 + 0.051635 * ttt ** 3 - 0.00024470 * ttt ** 4) / 3600.0
-            l1 = 357.52910918 + (129596581.0481 * ttt - 0.5532 * ttt ** 2 - 0.000136 * ttt ** 3 - 0.00001149 * ttt ** 4) / 3600.0
-            f = 93.27209062 + (1739527262.8478 * ttt - 12.7512 * ttt ** 2 + 0.001037 * ttt ** 3 + 0.00000417 * ttt ** 4) / 3600.0
-            d = 297.85019547 + (1602961601.2090 * ttt - 6.3706 * ttt ** 2 + 0.006593 * ttt ** 3 - 0.00003169 * ttt ** 4) / 3600.0
-            omega = 125.04455501 + (-6962890.2665 * ttt + 7.4722 * ttt ** 2 + 0.007702 * ttt ** 3 - 0.00005939 * ttt ** 4) / 3600.0
-            lonven = 181.979800853 + 58517.8156748 * ttt
-            lonear = 100.466448494 + 35999.3728521 * ttt
-            lonmar = 355.433274605 + 19140.299314 * ttt
-            lonjup = 34.351483900 + 3034.90567464 * ttt
-            lonsat = 50.0774713998 + 1222.11379404 * ttt
-            precrate = 1.39697137214 * ttt + 0.0003086 * ttt ** 2
-
-        # iau 1980 theory
-        if opt == '80':
-            l = ((((0.064) * ttt + 31.310) * ttt + 1717915922.6330) * ttt) / 3600.0 + 134.96298139
-            l1 = ((((-0.012) * ttt - 0.577) * ttt + 129596581.2240) * ttt) / 3600.0 + 357.52772333
-            f = ((((0.011) * ttt - 13.257) * ttt + 1739527263.1370) * ttt) / 3600.0 + 93.27191028
-            d = ((((0.019) * ttt - 6.891) * ttt + 1602961601.3280) * ttt) / 3600.0 + 297.85036306
-            omega = ((((0.008) * ttt + 7.455) * ttt - 6962890.5390) * ttt) / 3600.0 + 125.04452222
-            lonmer = 252.3 + 149472.0 * ttt
-            lonven = 179.9 + 58517.8 * ttt
-            lonear = 98.4 + 35999.4 * ttt
-            lonmar = 353.3 + 19140.3 * ttt
-            lonjup = 32.3 + 3034.9 * ttt
-            lonsat = 48.0 + 1222.1 * ttt
-            lonurn  =   0.0
-            lonnep  =   0.0
-            precrate=   0.0
+        l = ((((0.064) * ttt + 31.310) * ttt + 1717915922.6330) * ttt) / 3600.0 + 134.96298139
+        l1 = ((((-0.012) * ttt - 0.577) * ttt + 129596581.2240) * ttt) / 3600.0 + 357.52772333
+        f = ((((0.011) * ttt - 13.257) * ttt + 1739527263.1370) * ttt) / 3600.0 + 93.27191028
+        d = ((((0.019) * ttt - 6.891) * ttt + 1602961601.3280) * ttt) / 3600.0 + 297.85036306
+        omega = ((((0.008) * ttt + 7.455) * ttt - 6962890.5390) * ttt) / 3600.0 + 125.04452222
+        lonmer = 252.3 + 149472.0 * ttt
+        lonven = 179.9 + 58517.8 * ttt
+        lonear = 98.4 + 35999.4 * ttt
+        lonmar = 353.3 + 19140.3 * ttt
+        lonjup = 32.3 + 3034.9 * ttt
+        lonsat = 48.0 + 1222.1 * ttt
+        lonurn  =   0.0
+        lonnep  =   0.0
+        precrate=   0.0
 
         l = np.remainder(l, 360.0) * deg2rad
         l1 = np.remainder(l1, 360.0) * deg2rad
@@ -744,7 +648,7 @@ class ECI2ECEF:
         return gst
     
 
-    def polarm(self, xp, yp, ttt, opt):
+    def polarm(self, xp, yp, ttt):
         '''
         VALIDATED
         '''
@@ -755,32 +659,16 @@ class ECI2ECEF:
 
         pm = np.zeros((3, 3))
 
-        if opt == '80':
-            pm[0, 0] = cosxp
-            pm[0, 1] = 0.0
-            pm[0, 2] = -sinxp
-            pm[1, 0] = sinxp * sinyp
-            pm[1, 1] = cosyp
-            pm[1, 2] = cosxp * sinyp
-            pm[2, 0] = sinxp * cosyp
-            pm[2, 1] = -sinyp
-            pm[2, 2] = cosxp * cosyp
-        else:
-            convrt = math.pi / (3600.0 * 180.0)
-            sp = -47.0e-6 * ttt * convrt
-            cossp = math.cos(sp)
-            sinsp = math.sin(sp)
-
-            pm[0, 0] = cosxp * cossp
-            pm[0, 1] = -cosyp * sinsp + sinyp * sinxp * cossp
-            pm[0, 2] = -sinyp * sinsp - cosyp * sinxp * cossp
-            pm[1, 0] = cosxp * sinsp
-            pm[1, 1] = cosyp * cossp + sinyp * sinxp * sinsp
-            pm[1, 2] = sinyp * cossp - cosyp * sinxp * sinsp
-            pm[2, 0] = sinxp
-            pm[2, 1] = -sinyp * cosxp
-            pm[2, 2] = cosyp * cosxp
-
+        pm[0, 0] = cosxp
+        pm[0, 1] = 0.0
+        pm[0, 2] = -sinxp
+        pm[1, 0] = sinxp * sinyp
+        pm[1, 1] = cosyp
+        pm[1, 2] = cosxp * sinyp
+        pm[2, 0] = sinxp * cosyp
+        pm[2, 1] = -sinyp
+        pm[2, 2] = cosxp * cosyp
+        
         return pm
 
 
