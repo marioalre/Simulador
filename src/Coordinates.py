@@ -1,5 +1,6 @@
 import numpy as np
 import folium
+import math
 from src.time_conv import ConvTime
 
 def rotation_matrix_1(angle):
@@ -65,10 +66,6 @@ def cart2efix(r, v, t, dt, t0):
 
     return r, v
 
-
-def efix2cart():
-    ''' Earth fixed coordinate system to Space fixed coordinate system'''
-    pass
 
 def sid2rad(second):
     ''' Sidereal time to radians'''
@@ -148,6 +145,9 @@ def ecef2latlongh(r_ecef):
     r_k = r_ecef[2]
 
     long_old = 0
+    if np.abs(long_gd - long_old) < 1e-10:
+        long_old = -1
+
 
     while np.abs(long_gd - long_old) > 1e-10:
 
@@ -163,8 +163,11 @@ def ecef2latlongh(r_ecef):
         
     long_gc = np.arctan((1-e**2)*np.tan(long_gd))
 
-    print('Longitud geodésica: ', long_gd * 180 / np.pi)
-    print('Longitud geocéntrica: ', long_gc * 180 / np.pi)
+
+
+    if -1e-10 < long_gd < 1e-10:
+        long_gd = 1e-8
+        long_gc = np.arctan((1-e**2)*np.tan(long_gd))
 
     if long_gd < np.pi/180:
         hell = r_k / np.sin(long_gd) - S
@@ -173,49 +176,10 @@ def ecef2latlongh(r_ecef):
 
     print('Altitud: ', hell)
     print('Latitud: ', lambda_ * 180 / np.pi)
+    print('Longitud geodésica: ', long_gd * 180 / np.pi)
+    print('Longitud geocéntrica: ', long_gc * 180 / np.pi)
 
     return long_gd, long_gc, lambda_, hell
-
-def ecef2latlonh2():
-    pass
-    
-
-def latlongH2ecef(phi, lam, h):
-    ''' Latitude, longitude and height to ECEF
-    Parameters
-    ----------
-    phi : float
-        Latitude in degrees
-    lam : float
-        Longitude in degrees
-    h : float   
-        Ellipsoidal height in m
-    Returns
-    -------
-    r : array_like  
-        Position vector in km ECEF
-    '''
-    # Earth Constants
-    a = 6378137.0  # equatorial radius (meters)
-    f = 1/298.257223563  # flattening of the ellipsoid
-    b = a * (1 - f)  # polar radius (meters)
-    e2 = 1 - (b/a)**2  # eccentricity squared
-
-    # Convert to radians
-    phi_rad = phi * np.pi / 180
-    lam_rad = lam * np.pi / 180
-
-    # Calculate the radius of curvature in the prime vertical N
-    N = a / np.sqrt(1 - e2 * np.sin(phi_rad)**2)
-
-    # Calculate the cartesian coordinates (X,Y,Z) in the ECEF system
-    X = (N + h) * np.cos(phi_rad) * np.cos(lam_rad)
-    Y = (N + h) * np.cos(phi_rad) * np.sin(lam_rad)
-    Z = ((1 - e2) * N + h) * np.sin(phi_rad)
-
-    # Vector of position in ECEF coordinates
-    return [X, Y, Z]
-
 
 def plot_ground_track(lat = None, long = None, map = None):
     ''' Plot ground track
@@ -251,43 +215,40 @@ def plot_ground_track(lat = None, long = None, map = None):
 
     return map
 
-def fk5(r_gcrf, v_gcrf, date, UTC, dUT1, dAT, xp, yp):
-        '''This function is used to convert the position and velocity vectors from GCRF to FK5
-        celestial reference frame (GCRF) to terrestrial reference frame (ITRF).
-        Parameters
-        ----------
-        r_gcrf : numpy array
-            Position vector in GCRF
-        v_gcrf : numpy array
-            Velocity vector in GCRF
-        date : list
-            Date in the format [year, month, day]
-        UTC : string
-            UTC time in the format HH:MM:SS
-        dUT1 : float
-            Difference between UT1 and UTC
-        dAT : float
-            Difference between TAI and UTC
-        xp : float
-            Polar motion x-coordinate
-        yp : float
-            Polar motion y-coordinate
-        Returns
-        ------- 
-        r_ITRF : numpy array
-            Position vector in ITRF
-        v_ITRF : numpy array
-            Velocity vector in ITRF
-        '''
-        UT1 = ConvTime(date, UTC, dUT1, dAT, 'UT1')
-        TAI = ConvTime(date, UTC, dUT1, dAT, 'TAI')
-        TT = ConvTime(date, UTC, dUT1, dAT, 'TT')
-        T_UT1 = ConvTime(date, UTC, dUT1, dAT, 'T_UT1')
-        T_TT = ConvTime(date, UTC, dUT1, dAT, 'T_TT')
+def fk4():
+    # Choose one of the three methods to define the conversion matrix
+    # Method 1: in book
+    # 1950 - 2000
+    fk4m = np.array([
+        [0.9999256794956877, -0.0111814832204662, -0.0048590038153592],
+        [0.0111814832391717,  0.9999374848933135, -0.0000271625947142],
+        [0.0048590037723143, -0.0000271702937440,  0.9999881946043742]
+    ])
 
-        # Find precession and nutation angles
-        # Precession angles
-        pass
+    # Method 2: stk approach
+    # New way is formed by multiplying the matrices on pages
+    # 173 and 174 and adding in the correction to equinox given
+    # on page 168 of the supplement to the astronomical almanac 
+    # 1950 - 2000
+    fk4m = np.array([
+        [0.999925678612394, -0.011181874556714, -0.004858284812600],
+        [0.011181874524964,  0.999937480517880, -0.000027169816135],
+        [0.004858284884778, -0.000027156932874,  0.999988198095508]
+    ])
+
+    # Method 3: from Exp supp to Ast Almanac pg 185 6x6
+    # 1950 - 2000
+    '''
+    fk4m = np.array([
+        [0.9999256782, -0.0111820611, -0.0048579477,  0.00000242395018, -0.00000002710663, -0.00000001177656],
+        [0.0111820610,  0.9999374784, -0.0000271765,  0.00000002710663,  0.00000242397878, -0.00000000006587],
+        [0.0048579479, -0.0000271474,  0.9999881997,  0.00000001177656, -0.00000000006582,  0.00000242410173],
+        [-0.000551     , -0.238565     ,  0.435739     ,  0.99994704     , -0.01118251     , -0.00485767     ],
+        [ 0.238514     , -0.002667     , -0.008541     ,  0.01118251     ,  0.99995883     , -0.00002718     ],
+        [-0.435623     ,  0.012254     ,  0.002117     ,  0.00485767     , -0.00002714     ,   1.00000956    ]
+    ])'''
+
+    return fk4m
 
 
 def eci_to_ecef(r_ECI, v_ECI, t, theta):
@@ -338,8 +299,535 @@ def eci_to_ecef(r_ECI, v_ECI, t, theta):
     
     return r_ECEF, v_ECEF
 
+# This class allows to convert ECI coordinates to ECEF coordinates following the algorithm described in the
+# Fundamentals of Astrodynamics and Applications book by David A. Vallado.
+class ECI2ECEF:
+    ''' This class allows to convert ECI coordinates to ECEF coordinates following the algorithm described in the
+        Fundamentals of Astrodynamics and Applications book by David A. Vallado.
+    '''
+
+    # Define the constructor that takes the input parameters
+    def __init__(self, ttt, jdut1, lod, xp, yp, eqeterms, ddpsi, ddeps):
+        ''' 
+        This function initializes the class with the input parameters.
+        Inputs:
+            reci: ECI position vector (km)
+            veci: ECI velocity vector (km/s)
+            ttt: Julian centuries of terrestrial time
+            jdut1: Julian date of UT1
+            lod: Length of day (sec)
+            xp: Polar motion coefficient (arcsec)
+            yp: Polar motion coefficient (arcsec)
+            eqeterms: Boolean to select if the extra terms for nutation are used (0 or 2)
+            ddpsi: Correction to delta psi (arcsec)
+            ddeps: Correction to delta eps (arcsec)
+        '''
+        self.ttt = ttt
+        self.jdut1 = jdut1
+        self.lod = lod
+        self.xp = xp
+        self.yp = yp
+        self.eqeterms = eqeterms
+        self.ddpsi = ddpsi
+        self.ddeps = ddeps
+
+    # Define the function that converts ECI coordinates to ECEF
+    def eci2ecef(self, reci, veci, aeci):
+        self.reci = reci
+        self.veci = veci
+        self.aeci = aeci
+
+        # Call the auxiliary functions to get the precession, nutation and rotation parameters
+        prec, psia, wa, ea, xa = self.precess(self.ttt, '80')
+        deltapsi, trueeps, meaneps, omega, nut = self.nutation(self.ttt, self.ddpsi, self.ddeps)
+        st, stdot = self.sideral(self.jdut1, deltapsi, meaneps, omega, self.lod, self.eqeterms)
+        pm = self.polarm(self.xp, self.yp, self.ttt, '80')
+
+        # Calculate the angular velocity of the Earth
+        thetasa = 7.29211514670698e-05 * (1.0 - self.lod / 86400.0)
+        omegaearth = np.array([0, 0, thetasa])
+
+        # Convert ECI coordinates to ECEF using transformation matrices
+        rpef = st.T @ nut.T @ prec.T @ self.reci
+        recef = pm.T @ rpef
+
+        vpef = st.T @ nut.T @ prec.T @ self.veci - np.cross(omegaearth, rpef)
+        vecef = pm.T @ vpef
+
+        temp = np.cross(omegaearth, rpef)
+
+        # Two additional terms that are not necessary if the satellite is not on the surface of the Earth
+        aecef = pm.T @ (st.T @ nut.T @ prec.T @ self.aeci) - np.cross(omegaearth,temp) - 2.0 * np.cross(omegaearth,vpef)
+
+        # Return the results
+        return recef, vecef, aecef
+    
+     # Define the function that converts ECI coordinates to ECEF
+    def ecef2eci(self, recef, vecef, aecef):
+        self.recef = recef
+        self.vecef = vecef
+        self.aecef = aecef
+
+        # Call the auxiliary functions to get the precession, nutation and rotation parameters
+        prec, psia, wa, ea, xa = self.precess(self.ttt, '80')
+        deltapsi, trueeps, meaneps, omega, nut = self.nutation(self.ttt, self.ddpsi, self.ddeps)
+        st, stdot = self.sideral(self.jdut1, deltapsi, meaneps, omega, self.lod, self.eqeterms)
+        pm = self.polarm(self.xp, self.yp, self.ttt, '80')
+
+        # Calculate the angular velocity of the Earth
+        thetasa = 7.29211514670698e-05 * (1.0 - self.lod / 86400.0)
+        omegaearth = np.array([0, 0, thetasa])
+
+        # Convert ECI coordinates to ECEF using transformation matrices
+        rpef = pm @ recef
+        reci = prec @ nut @ st @ self.recef
+
+        vpef = pm @ vecef
+        veci = prec @ nut @ st @ (vpef + np.cross(omegaearth, rpef))
+
+        temp = np.cross(omegaearth, rpef)
+
+        # Two additional terms that are not necessary if the satellite is not on the surface of the Earth
+        aeci = prec @ nut @ st @ (pm @ aecef) + np.cross(omegaearth,temp) + 2.0 * np.cross(omegaearth,vpef) 
+
+        # Return the results
+        return reci, veci, aeci
+
+    # Define the auxiliary functions for precession, nutation and rotation
+
+    def get_ttt(self, JD_tt):
+        '''This function calculates the Julian centuries of terrestrial time
+        Parameters
+        ----------
+        JD_tt : float
+            Julian date of TT
+        Returns
+        ----------
+        ttt : float
+            Julian centuries of terrestrial time
+        '''
+
+        ttt = (JD_tt - 2451545.0) / 36525.0
+
+
+    def precess(self, ttt, opt):
+        '''Based on Vallado's book, Fundamentals of Astrodynamics and Applications, 4th ed., Algorithm 23, p. 211
+        and the Matlab code aviable at celestrak.com
+
+        VALIDATED
+
+        Parameters
+        ----------
+        ttt : float
+            Julian centuries of terrestrial time
+        opt : str
+            '50' for fk4 b1950 precession angles
+            '80' for iau 76 precession angles
+            '00' for iau 06 precession angles
+        Returns
+        ----------
+        prec : array
+            Precession matrix
+        '''
+        # Code for precess function goes here
+        convrt = np.pi / (180.0*3600.0)
+        ttt2 = ttt * ttt
+        ttt3 = ttt2 * ttt
+
+        prec = np.zeros((3, 3))
+
+        # fk4 b1950 precession angles
+        if opt == '50':
+            t1 = 0.0  # (ttt - 2433282.42345905) / 365242.198782
+            t2 = (ttt - 2433282.42345905) / 36525
+            psia = 50.3708 + 0.0050 * ttt
+            wa = 0.0
+            ea = 84428.26 - 46.845 * ttt - 0.00059 * ttt2 + 0.00181 * ttt3
+            xa = 0.1247 - 0.0188 * ttt
+            zeta = (23035.545 + 139.720 * t1 + 0.060 * t1 * t1) * ttt + (30.240 - 0.270 * t1) * ttt2 + 17.995 * ttt3
+            theta = (20051.12 - 85.29 * t1 - 0.37 * t1 * t1) * ttt + (-42.65 - 0.37 * t1) * ttt2 - 41.80 * ttt3
+            z = (23035.545 + 139.720 * t1 + 0.060 * t1 * t1) * ttt + (109.480 + 0.390 * t1) * ttt2 + 18.325 * ttt3
+
+            prec[0, 0] = 1.0 - 2.9696e-4 * ttt2 - 1.3e-7 * ttt3
+            prec[0, 1] = 2.234941e-2 * ttt + 6.76e-6 * ttt2 - 2.21e-6 * ttt3
+            prec[0, 2] = 9.7169e-3 * ttt - 2.07e-6 * ttt2 - 9.6e-7 * ttt3
+            prec[1, 0] = -prec[0, 1]
+            prec[1, 1] = 1.0 - 2.4975e-4 * ttt2 - 1.5e-7 * ttt3
+            prec[1, 2] = -1.0858e-4 * ttt2
+            prec[2, 0] = -prec[0, 2]
+            prec[2, 1] = prec[1, 2]
+            prec[2, 2] = 1.0 - 4.721e-5 * ttt2
+
+            # pass these back out for testing
+            psia = zeta
+            wa = theta
+            ea = z
+
+            return prec
+
+        # iau 76 precession angles
+        elif opt == '80':
+
+            psia = 5038.7784 * ttt - 1.07259 * ttt2 - 0.001147 * ttt3
+            wa = 84381.448 + 0.05127 * ttt2 - 0.007726 * ttt3
+            ea = 84381.448 - 46.8150 * ttt - 0.00059 * ttt2 + 0.001813 * ttt3
+            xa = 10.5526 * ttt - 2.38064 * ttt2 - 0.001125 * ttt3
+
+            zeta = 2306.2181 * ttt + 0.30188 * ttt2 + 0.017998 * ttt3
+            theta = 2004.3109 * ttt - 0.42665 * ttt2 - 0.041833 * ttt3
+            z = 2306.2181 * ttt + 1.09468 * ttt2 + 0.018203 * ttt3
+
+
+        # iau 06 precession angles
+        else:
+            oblo = 84381.406
+            psia = (((( -0.0000000951 * ttt + 0.000132851 ) * ttt - 0.00114045 ) * ttt - 1.0790069 ) * ttt + 5038.481507 ) * ttt
+            wa = ((((  0.0000003337 * ttt - 0.000000467 ) * ttt - 0.00772503 ) * ttt + 0.0512623 ) * ttt - 0.025754 ) * ttt + oblo
+            ea = (((( -0.0000000434 * ttt - 0.000000576 ) * ttt + 0.00200340 ) * ttt - 0.0001831 ) * ttt - 46.836769 ) * ttt + oblo
+            xa = (((( -0.0000000560 * ttt + 0.000170663 ) * ttt - 0.00121197 ) * ttt - 2.3814292 ) * ttt + 10.556403 ) * ttt
+
+            zeta = (((( -0.0000003173 * ttt - 0.000005971 ) * ttt + 0.01801828 ) * ttt + 0.2988499 ) * ttt + 2306.083227 ) * ttt + 2.650545
+            theta = (((( -0.0000001274 * ttt - 0.000007089 ) * ttt - 0.04182264 ) * ttt - 0.4294934 ) * ttt + 2004.191903 ) * ttt
+            z = ((((  0.0000002904 * ttt - 0.000028596 ) * ttt + 0.01826837 ) * ttt + 1.0927348 ) * ttt + 2306.077181 ) * ttt - 2.650545
+
+
+        # convert from arcseconds to radians
+        psia *= convrt
+        wa *= convrt
+        ea *= convrt
+        xa *= convrt
+        zeta *= convrt
+        theta *= convrt
+        z *= convrt
+
+        # calculate the precession matrix elements
+        cz = np.cos(z)
+        sz = np.sin(z)
+        coszeta = math.cos(zeta)
+        sinzeta = math.sin(zeta)
+        costheta = math.cos(theta)
+        sintheta = math.sin(theta)
+        cosz = math.cos(z)
+        sinz = math.sin(z)
+
+        # Formar la matriz mod to j2000
+        prec = np.zeros((3, 3))
+        prec[0, 0] = coszeta * costheta * cosz - sinzeta * sinz
+        prec[0, 1] = coszeta * costheta * sinz + sinzeta * cosz
+        prec[0, 2] = coszeta * sintheta
+        prec[1, 0] = -sinzeta * costheta * cosz - coszeta * sinz
+        prec[1, 1] = -sinzeta * costheta * sinz + coszeta * cosz
+        prec[1, 2] = -sinzeta * sintheta
+        prec[2, 0] = -sintheta * cosz
+        prec[2, 1] = -sintheta * sinz
+        prec[2, 2] = costheta
+
+
+        return prec, psia, wa, ea, xa
+
+
+    def nutation(self, ttt, ddpsi, ddeps):
+        '''Based on Vallado's book, Fundamentals of Astrodynamics and Applications, 4th ed., Algorithm 22, p. 205
+        and the Matlab code aviable at celestrak.com
+
+        VALIDATED
+        '''
+
+        deg2rad = math.pi / 180.0
+
+        iar80, rar80 = self.iau80in()  # coeff in deg
+
+        # ---- determine coefficients for iau 1980 nutation theory ----
+        ttt2 = ttt * ttt
+        ttt3 = ttt2 * ttt
+
+        meaneps = -46.8150 * ttt - 0.00059 * ttt2 + 0.001813 * ttt3 + 84381.448
+        meaneps = (meaneps / 3600.0) % 360.0
+        meaneps = meaneps * deg2rad
+
+        l, l1, f, d, omega, lonmer, lonven, lonear, lonmar, lonjup, lonsat, lonurn, lonnep, precrate = self.fundarg(ttt, '80')
+
+        deltapsi = 0.0
+        deltaeps = 0.0
+        for i in range(105, -1, -1):
+            tempval = iar80[i - 1, 0] * l + iar80[i - 1, 1] * l1 + iar80[i - 1, 2] * f + iar80[i - 1, 3] * d + iar80[i - 1, 4] * omega
+            deltapsi = deltapsi + (rar80[i - 1, 0] + rar80[i - 1, 1] * ttt) * math.sin(tempval)
+            deltaeps = deltaeps + (rar80[i - 1, 2] + rar80[i - 1, 3] * ttt) * math.cos(tempval)
+
+        # --------------- find nutation parameters --------------------
+        a1 = deltapsi + ddpsi
+        a2 = deltaeps + ddeps
+
+        if a1 < 0.0:
+            deltapsi = np.remainder(-a1,  2.0 * math.pi)
+            deltapsi = -deltapsi
+        else:
+            deltapsi = np.remainder(a1,  2.0 * math.pi)
+
+        if a2 < 0.0:
+            deltaeps = np.remainder(-a2, 2.0 * math.pi)
+            deltaeps = -deltaeps
+        else:
+            deltaeps = np.remainder(a2, 2.0 * math.pi)
+
+        trueeps = meaneps + deltaeps
+
+        cospsi = math.cos(deltapsi)
+        sinpsi = math.sin(deltapsi)
+        coseps = math.cos(meaneps)
+        sineps = math.sin(meaneps)
+        costrueeps = math.cos(trueeps)
+        sintrueeps = math.sin(trueeps)
+
+        nut = np.zeros((3, 3))
+        nut[0, 0] = cospsi
+        nut[0, 1] = costrueeps * sinpsi
+        nut[0, 2] = sintrueeps * sinpsi
+        nut[1, 0] = -coseps * sinpsi
+        nut[1, 1] = costrueeps * coseps * cospsi + sintrueeps * sineps
+        nut[1, 2] = sintrueeps * coseps * cospsi - sineps * costrueeps
+        nut[2, 0] = -sineps * sinpsi
+        nut[2, 1] = costrueeps * sineps * cospsi - sintrueeps * coseps
+        nut[2, 2] = sintrueeps * sineps * cospsi + costrueeps * coseps
+
+        return deltapsi, trueeps, meaneps, omega, nut
+    
+    def iau80in(self):
+        # 0.0001" to rad
+        convrt = 0.0001 * np.pi / (180 * 3600.0)
+
+        nut80 = np.loadtxt("./data/nut80.dat")
+
+        iar80 = nut80[:, 0:5]
+        rar80 = nut80[:, 5:9]
+
+        for i in range(106):
+            for j in range(4):
+                rar80[i, j] = rar80[i, j] * convrt
+
+        return iar80, rar80
+    
+
+    def fundarg(self, ttt, opt):
+        deg2rad = np.pi / 180.0
+
+        # ---- determine coefficients for iau 2000 nutation theory ----
+        ttt2 = ttt * ttt
+        ttt3 = ttt2 * ttt
+        ttt4 = ttt2 * ttt2
+
+        # ---- iau 2006 theory
+        if opt == '06':
+            l = 134.96340251 + (1717915923.2178 * ttt + 31.8792 * ttt2 + 0.051635 * ttt3 - 0.00024470 * ttt4) / 3600.0
+            l1 = 357.52910918 + (129596581.0481 * ttt - 0.5532 * ttt2 - 0.000136 * ttt3 - 0.00001149 * ttt4) / 3600.0
+            f = 93.27209062 + (1739527262.8478 * ttt - 12.7512 * ttt2 + 0.001037 * ttt3 + 0.00000417 * ttt4) / 3600.0
+            d = 297.85019547 + (1602961601.2090 * ttt - 6.3706 * ttt2 + 0.006593 * ttt3 - 0.00003169 * ttt4) / 3600.0
+            omega = 125.04455501 + (-6962890.5431 * ttt + 7.4722 * ttt2 + 0.007702 * ttt3 - 0.00005939 * ttt4) / 3600.0
+
+            lonmer = 252.250905494 + 149472.6746358 * ttt
+            lonven = 181.979800853 + 58517.8156748 * ttt
+            lonear = 100.466448494 + 35999.3728521 * ttt
+            lonmar = 355.433274605 + 19140.299314 * ttt
+            lonjup = 34.351483900 + 3034.90567464 * ttt
+            lonsat = 50.0774713998 + 1222.11379404 * ttt
+            lonurn = 314.055005137 + 428.466998313 * ttt
+            lonnep = 304.348665499 + 218.486200208 * ttt
+            precrate = 1.39697137214 * ttt + 0.0003086 * ttt2
+
+        # ---- iau 2000b theory
+        if opt == '02':
+            l = 134.96340251 + (1717915923.2178 * ttt) / 3600.0
+            l1 = 357.52910918 + (129596581.0481 * ttt) / 3600.0
+            f = 93.27209062 + (1739527262.8478 * ttt) / 3600.0
+            d = 297.85019547 + (1602961601.2090 * ttt) / 3600.0
+            omega = 125.04455501 + (-6962890.2665 * ttt + 7.4722 * ttt ** 2 + 0.007702 * ttt ** 3 - 0.00005939 * ttt ** 4) / 3600.0
+
+            lonmer = 0.0
+            lonven = 0.0
+            lonear = 0.0
+            lonmar = 0.0
+            lonjup = 0.0
+            lonsat = 0.0
+            lonurn = 0.0
+            lonnep = 0.0
+            precrate = 0.0
+
+        # iau 1996 theory
+        if opt == '96':
+            l = 134.96340251 + (1717915923.2178 * ttt + 31.8792 * ttt ** 2 + 0.051635 * ttt ** 3 - 0.00024470 * ttt ** 4) / 3600.0
+            l1 = 357.52910918 + (129596581.0481 * ttt - 0.5532 * ttt ** 2 - 0.000136 * ttt ** 3 - 0.00001149 * ttt ** 4) / 3600.0
+            f = 93.27209062 + (1739527262.8478 * ttt - 12.7512 * ttt ** 2 + 0.001037 * ttt ** 3 + 0.00000417 * ttt ** 4) / 3600.0
+            d = 297.85019547 + (1602961601.2090 * ttt - 6.3706 * ttt ** 2 + 0.006593 * ttt ** 3 - 0.00003169 * ttt ** 4) / 3600.0
+            omega = 125.04455501 + (-6962890.2665 * ttt + 7.4722 * ttt ** 2 + 0.007702 * ttt ** 3 - 0.00005939 * ttt ** 4) / 3600.0
+            lonven = 181.979800853 + 58517.8156748 * ttt
+            lonear = 100.466448494 + 35999.3728521 * ttt
+            lonmar = 355.433274605 + 19140.299314 * ttt
+            lonjup = 34.351483900 + 3034.90567464 * ttt
+            lonsat = 50.0774713998 + 1222.11379404 * ttt
+            precrate = 1.39697137214 * ttt + 0.0003086 * ttt ** 2
+
+        # iau 1980 theory
+        if opt == '80':
+            l = ((((0.064) * ttt + 31.310) * ttt + 1717915922.6330) * ttt) / 3600.0 + 134.96298139
+            l1 = ((((-0.012) * ttt - 0.577) * ttt + 129596581.2240) * ttt) / 3600.0 + 357.52772333
+            f = ((((0.011) * ttt - 13.257) * ttt + 1739527263.1370) * ttt) / 3600.0 + 93.27191028
+            d = ((((0.019) * ttt - 6.891) * ttt + 1602961601.3280) * ttt) / 3600.0 + 297.85036306
+            omega = ((((0.008) * ttt + 7.455) * ttt - 6962890.5390) * ttt) / 3600.0 + 125.04452222
+            lonmer = 252.3 + 149472.0 * ttt
+            lonven = 179.9 + 58517.8 * ttt
+            lonear = 98.4 + 35999.4 * ttt
+            lonmar = 353.3 + 19140.3 * ttt
+            lonjup = 32.3 + 3034.9 * ttt
+            lonsat = 48.0 + 1222.1 * ttt
+            lonurn  =   0.0
+            lonnep  =   0.0
+            precrate=   0.0
+
+        l = np.remainder(l, 360.0) * deg2rad
+        l1 = np.remainder(l1, 360.0) * deg2rad
+        f = np.remainder(f, 360.0) * deg2rad
+        d = np.remainder(d, 360.0) * deg2rad
+        omega = np.remainder(omega, 360.0) * deg2rad
+        lonmer = np.remainder(lonmer, 360.0) * deg2rad
+        lonven = np.remainder(lonven, 360.0) * deg2rad
+        lonear = np.remainder(lonear, 360.0) * deg2rad
+        lonmar = np.remainder(lonmar, 360.0) * deg2rad
+        lonjup = np.remainder(lonjup, 360.0) * deg2rad
+        lonsat = np.remainder(lonsat, 360.0) * deg2rad
+        lonurn = np.remainder(lonurn, 360.0) * deg2rad
+        lonnep = np.remainder(lonnep, 360.0) * deg2rad
+        precrate = np.remainder(precrate, 360.0) * deg2rad
+
+        return l, l1, f, d, omega, lonmer, lonven, lonear, lonmar, lonjup, lonsat, lonurn, lonnep, precrate
+
+
+    def sideral(self, jdut1, deltapsi, meaneps, omega, lod, eqeterms):
+        '''
+        VALIDATED
+        '''
+        gmst = self.gstime(jdut1)
+
+        if (jdut1 > 2450449.5) and (eqeterms > 0):
+            ast = gmst + deltapsi * math.cos(meaneps) + 0.00264 * math.pi / (3600 * 180) * math.sin(omega) + 0.000063 * math.pi / (3600 * 180) * math.sin(2.0 * omega)
+        else:
+            ast = gmst + deltapsi * math.cos(meaneps)
+
+        ast = ast % (2.0 * math.pi)
+        thetasa = 7.29211514670698e-05 * (1.0 - lod / 86400.0)
+        omegaearth = thetasa
+
+        st = np.array([[math.cos(ast), -math.sin(ast), 0.0],
+            [math.sin(ast), math.cos(ast), 0.0],
+            [0.0, 0.0, 1.0]])
+
+        stdot = np.array([[-omegaearth * math.sin(ast), -omegaearth * math.cos(ast), 0.0],
+                [omegaearth * math.cos(ast), -omegaearth * math.sin(ast), 0.0],
+                [0.0, 0.0, 0.0]])
+
+        return st, stdot
+    
+
+    def gstime(self, jdut1):
+
+        twopi = 2.0 * math.pi
+        deg2rad = math.pi / 180.0
+
+        tut1 = (jdut1 - 2451545.0) / 36525.0
+
+        gst = -6.2e-6 * tut1**3 + 0.093104 * tut1**2 + (876600.0 * 3600.0 + 8640184.812866) * tut1 + 67310.54841
+
+        gst = (gst * deg2rad / 240.0) % (twopi)
+
+        if gst < 0.0:
+            gst += twopi
+
+        return gst
+    
+
+    def polarm(self, xp, yp, ttt, opt):
+        '''
+        VALIDATED
+        '''
+        cosxp = math.cos(xp)
+        sinxp = math.sin(xp)
+        cosyp = math.cos(yp)
+        sinyp = math.sin(yp)
+
+        pm = np.zeros((3, 3))
+
+        if opt == '80':
+            pm[0, 0] = cosxp
+            pm[0, 1] = 0.0
+            pm[0, 2] = -sinxp
+            pm[1, 0] = sinxp * sinyp
+            pm[1, 1] = cosyp
+            pm[1, 2] = cosxp * sinyp
+            pm[2, 0] = sinxp * cosyp
+            pm[2, 1] = -sinyp
+            pm[2, 2] = cosxp * cosyp
+        else:
+            convrt = math.pi / (3600.0 * 180.0)
+            sp = -47.0e-6 * ttt * convrt
+            cossp = math.cos(sp)
+            sinsp = math.sin(sp)
+
+            pm[0, 0] = cosxp * cossp
+            pm[0, 1] = -cosyp * sinsp + sinyp * sinxp * cossp
+            pm[0, 2] = -sinyp * sinsp - cosyp * sinxp * cossp
+            pm[1, 0] = cosxp * sinsp
+            pm[1, 1] = cosyp * cossp + sinyp * sinxp * sinsp
+            pm[1, 2] = sinyp * cossp - cosyp * sinxp * sinsp
+            pm[2, 0] = sinxp
+            pm[2, 1] = -sinyp * cosxp
+            pm[2, 2] = cosyp * cosxp
+
+        return pm
+
 
 if __name__ == "__main__":
     
-    ecef2latlongh([6524.834, 6862.875, 6448.296])
+    val = ecef2latlongh([6524.834, 6862.875, 6448.296])
+    # Example usage
+    # Create a j200 position vector in km
+    rj200 = np.array([10000.,20000.,30000])
+
+    # Convert to b195 position vector using method of choice
+    rb195 = np.dot(fk4(), rj200)
+
+    # Print the result
+    print(rb195)
+
+    # Ejemplo vallado 3.15
+
+    # seguntos to arco segundos
+    
+    convrt = np.pi / (180.0 * 3600.0)
+
+    r_ecef = [-1033.4793830,  7901.2952754,  6380.3565958]
+    v_ecef = [-3.225636520,  -2.872451450,   5.531924446]
+    a_ecef = [0.001,0.002,0.003]
+    
+    print(f"r_ecef: {r_ecef}")
+    print(f"v_ecef: {v_ecef}")
+    print(f"a_ecef: {a_ecef}")
+
+    ttt = 0.0426236319
+    jdut1 = 2453101.827406783
+    lod = 0.001556300
+    xp = -6.820455828585174e-07
+    yp = 1.615927632369383e-06
+    eqeterms = 2
+    ddpsi = -2.530485008551223e-7
+    ddeps = -1.878653014299452e-8
+    conv = ECI2ECEF(ttt, jdut1, lod, xp, yp, eqeterms, ddpsi, ddeps)
+
+    reci, veci, aeci = conv.ecef2eci(r_ecef, v_ecef, a_ecef)
+    print(f"reci: {reci}")
+    print(f"veci: {veci}")
+    print(f"aeci: {aeci}")
+    recef, vecef, aecef = conv.eci2ecef(reci, veci, aeci)
+    print(f"recef: {recef}")
+    print(f"vecef: {vecef}")
+    print(f"aecef: {aecef}")
+
     

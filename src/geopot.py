@@ -4,6 +4,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from scipy.special import lpn, factorial
 import pandas as pd
 import os
+import math
 
 class Geopot():
     '''Class to calculate the potential arround the Earth'''
@@ -93,7 +94,7 @@ class Geopot():
         L, Ld= lpn(N, x)
 
         # P, Pd = lpmn(N, N, x)
-        
+        N = int(N)
         
         P = np.zeros((N, N))
         Pd = np.zeros((N, N))
@@ -142,6 +143,63 @@ class Geopot():
                         Pd[m, n] = 0
         
         return P, Pd
+
+    def ondulation(self, lat, long):
+        '''Geoide undulation'''
+
+        MU = self.mu
+        R_EQ = self.r
+        # Read the data
+
+        data = np.loadtxt('data\egm96_to360.ascii.txt')
+
+        # select de data M=0
+        data = data[data[:, 1] == 0]
+
+        # select the even data
+        data = data[data[:, 0] % 2 == 0]
+
+        # get the max degree and order
+        n_max = np.max(data[:, 0])
+        m_max = np.max(data[:, 1])
+
+        # legendre polynomials
+        P, Pd = self.legendre(n_max+1, np.sin(lat))
+
+        # calculate de potential por r_eq
+        
+        pot = self.mu / self.r    
+        # potencial ideal
+
+        long_rad = np.radians(long)
+
+        U = self.gravitational_potential(R_EQ/1000, lat, long)[0]
+
+        for i in range(len(data)):
+            n = int(data[i, 0])
+            m = int(data[i, 1])
+            C = data[i, 2]
+            S = data[i, 3]
+
+            Pn = P[m, n]
+
+            if math.isnan(R_EQ**n/ R_EQ**(n+1)):
+                order = n
+                continue 
+            pot = pot + R_EQ**n/ R_EQ**(n+1) * MU * (C * np.cos(m * long_rad) + S * np.sin(m * long_rad)) * Pn 
+
+        # calculate the undulation
+        V = pot
+
+        T = V - U
+
+        N = R_EQ**2 * T / MU
+
+        print(f'Undulation: {N} m')
+
+        return N
+
+
     
     def arraylatlong(self, lat, lon, r, order=15, savedata=False):
         '''Calculate the potential and gravity field
@@ -362,7 +420,7 @@ class Geopot():
         None
         '''
 
-        str_name = "results/" + str(name) + ".txt"
+        str_name = os.getcwd() +  '\\results\\' + str(name)
 
         with open(str_name, 'w') as f:
             for i in range(len(list1)):
@@ -384,7 +442,7 @@ class Geopot():
             List with the data
         '''
 
-        path = "results/" + str(name) + ".txt"
+        path = os.getcwd() + "\\results\\" + str(name)
 
         with open(path, 'r') as f:
             data = f.readlines()
@@ -421,12 +479,14 @@ if __name__ == '__main__':
                            order=15, 
                            savedata=True)
 
-    data1, data2, data3 = Potencial.calculate(resolucion=40, order=15, option='gravity')
+    # data1, data2, data3 = Potencial.calculate(resolucion=40, order=15, option='gravity')
 
-    Potencial.write_data('gravity.txt', data1, data2, data3)
+    # Potencial.write_data('gravity.txt', data1, data2, data3)
 
-    data = Potencial.read_data('gravity')
+    #data = Potencial.read_data('gravity.txt')
     #data = [data1, data2, data3]
 
-    Potencial.plot_potential(data, dtype='2D')
-    Potencial.plot_potential(data, dtype='3D')
+    # Potencial.plot_potential(data, dtype='2D')
+    # Potencial.plot_potential(data, dtype='3D')
+
+    # Potencial.ondulation(10, -10)

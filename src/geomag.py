@@ -904,6 +904,7 @@ class Geomag:
     
     def transformation2orb(self, Bvector, orbparam, phi, theta, thetag = 0):
         '''Transformation of the earth's magnetic field from inertial coordinates to orbital coordinates
+        Ecuaciones comprobadas
         Parameters
         ----------
         Bvector : array
@@ -1102,8 +1103,9 @@ class Geomag:
 
 
         if savedata:
-            path = os.getcwd() + '/results/B_array_latlon.txt'
-            np.savetxt(path, B_array)
+            path = os.getcwd() + '/results/B_array_latlon.csv'
+            data = pd.DataFrame(B_array, columns=['r (km)', 'theta (deg)', 'phi (deg)', 'Br (nT)', 'Btheta (nT)', 'Bphi (nT)', 'BN (nT)', 'BE (nT)', 'BD (nT)'])
+            data.to_csv(path)
 
         return B_array
     
@@ -1170,7 +1172,7 @@ class Geomag:
             data.to_csv(path)
 
     
-    def printresults(self, r, theta, phi, year=2021, N=3, savedata=False):
+    def printresults(self, rtp, savedata=False):
         '''This function prints the magnetic field at a given location
         Parameters
         ----------
@@ -1195,15 +1197,11 @@ class Geomag:
         Vertical component (Z)  :  -454.0nT
         '''
 
-        filename = input('file name to save results: ')
-
-        rtp = self.magnetic_field( r, theta, phi, year=year, N=N)[1]
-
         xyz = self.transformation2NED(rtp)
 
         dhif = self.xyz2dhif(xyz[0], xyz[1], xyz[2])
 
-        print('Geomagnetic field values at: ' + str(phi) + ' / ' + str(theta) + ', at altitude ' + str(r) + ', for ' + str(year))
+        print('Geomagnetic field values at: ')
         print('Declination (D): ' + str(dhif[0]) + ' degrees')
         print('Inclination (I): ' + str(dhif[2]) + ' degrees')
         print('Horizontal intensity (H): ' + str(dhif[1]) + ' nT')
@@ -1213,11 +1211,11 @@ class Geomag:
         print('Vertical component (Z): ' + str(xyz[2]) + ' nT')
 
         if savedata:
-            path = os.getcwd() + '/results/' + filename + '.txt'
+            path = os.getcwd() + '/results/magPoint.txt'
 
             # Write to file
             with open(path, 'w') as f:
-                f.write('Geomagnetic field values at: ' + str(phi) + ' / ' + str(theta) + ', at altitude ' + str(r) + ', for ' + str(year) + '\n')
+                f.write('Geomagnetic field values \n')
                 f.write('Declination (D): ' + str(dhif[0]) + ' degrees\n')
                 f.write('Inclination (I): ' + str(dhif[2]) + ' degrees\n')
                 f.write('Horizontal intensity (H): ' + str(dhif[1]) + ' nT\n')
@@ -1226,7 +1224,7 @@ class Geomag:
                 f.write('East component (Y): ' + str(xyz[1]) + ' nT\n')
                 f.write('Vertical component (Z): ' + str(xyz[2]) + ' nT\n')
 
-                print('Results saved to ' + filename + '.txt')
+                print('Results saved to /results/magPoint.txt')
     
     def plotMagneticField(self, val, year=2020, N=13, modelos=[1, 0, 0, 0, 1], timeRange=[1900, 2025], absolute_value=False):
         '''This function plots the magnetic field at a given location
@@ -1294,16 +1292,16 @@ class Geomag:
                 if model==1:
                     for idxt, t in enumerate(time):
                         if idx == 0:
-                            val = self.dipole(phi, theta, r, year=t)[0]
+                            val = self.dipole(r, theta, phi, year=t)[0]
                         elif idx == 1:
-                            val = self.centered_dipole(phi, theta, r, year=t)[0]
+                            val = self.centered_dipole(r, theta, phi, year=t)[0]
                         elif idx == 2:
-                            val = self.quadrupole(phi, theta, r, year=t)[0]
+                            val = self.quadrupole(r, theta, phi, year=t)[0]
                         elif idx == 3:
                             # val = geomag.octupole(phi, theta, r, year=t)[0]
-                            val = self.magnetic_field(phi, theta, r, year=t, N=3)[0]
+                            val = self.magnetic_field(r, theta, phi, year=t, N=3)[0]
                         elif idx == 4:
-                            val = self.magnetic_field(phi, theta, r, year=t, N=N)[0]
+                            val = self.magnetic_field(r, theta, phi, year=t, N=N)[0]
 
                         Br[idx, idxt] = val
 
@@ -1325,16 +1323,16 @@ class Geomag:
                 if model==1:
                     for idxt, t in enumerate(time):
                         if idx == 0:
-                            val = geomag.dipole(phi, theta, r, year=t)[1]
+                            val = self.dipole(r, theta, phi, year=t)[1]
                         elif idx == 1:
-                            val = geomag.centered_dipole(phi, theta, r, year=t)[1]
+                            val = self.centered_dipole(r, theta, phi, year=t)[1]
                         elif idx == 2:
-                            val = geomag.quadrupole(phi, theta, r, year=t)[1]
+                            val = self.quadrupole(r, theta, phi, year=t)[1]
                         elif idx == 3:
                             # val = geomag.octupole(phi, theta, r, year=t)[1]
-                            val = geomag.magnetic_field(phi, theta, r, year=t, N=3)[1]
+                            val = self.magnetic_field(r, theta, phi, year=t, N=3)[1]
                         elif idx == 4:
-                            val = geomag.magnetic_field(phi, theta, r, year=t, N=N)[1]
+                            val = self.magnetic_field(r, theta, phi, year=t, N=N)[1]
                             # val = geomag.magnet(r, theta, phi, year=t, N=N)
 
                         Br[idx, idxt] = val[0]
@@ -1363,6 +1361,43 @@ class Geomag:
         plt.show()
 
         return Br, Btheta, Bphi
+    
+    def plotMagneticFieldGeneral(self, time, Bvector):
+        '''This function plots the magnetic field at a given location
+        Parameters
+        ----------
+        time : array
+            The time for which to calculate the magnetic field
+        Bvector : array
+            The magnetic field vector r, theta, phi
+        Returns
+        -------
+        None
+        '''
+
+        Bx = [x[0] for x in Bvector]
+        By = [x[1] for x in Bvector]
+        Bz = [x[2] for x in Bvector]
+
+        fig, axs = plt.subplots(3, 1, figsize=(10, 10))
+
+        axs[0].plot(time, Bx, 'b', label='Bx')
+        axs[0].set_ylabel('B_x (nT)')
+        axs[1].plot(time, By, 'r', label='By')
+        axs[1].set_ylabel('B_y (nT)')
+        axs[2].plot(time, Bz, 'g', label='Bz')
+        axs[2].set_ylabel('B_z (nT)')
+
+        axs[0].set_title('Campo magnético')
+        axs[2].set_xlabel('Tiempo')
+
+        axs[0].grid( which='major', axis='both')
+        axs[1].grid( which='major', axis='both')
+        axs[2].grid( which='major', axis='both')
+
+        plt.show()
+
+        return fig, axs
                                               
 
 if __name__ == '__main__':
