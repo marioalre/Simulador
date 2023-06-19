@@ -4,10 +4,13 @@ from src.Orbit import Orbit
 class Lambert(Orbit):
     '''Lambert's problem solver class for two point transfers in space with a given body's gravitational parameter mu
     R0 and R1 are the initial and final position vectors'''
-    def __init__(self, R0, R1, body):
+    def __init__(self, R0, R1, body=None):
         self.R0 = np.array(R0)
         self.R1 = np.array(R1)
-        self.mu = body.mu
+        if body is None:
+            self.mu = 398600
+        else:
+            self.mu = body.mu
 
     def minimum_energy(self):
         '''Minimum energy transfer between two points in space'''
@@ -122,3 +125,19 @@ class Lambert(Orbit):
             return np.sqrt(2)/40*y**(3/2) + 1/8 * A * (np.sqrt(y) + A *np.sqrt(1/(2*y)))
         else:
             return (y / C)**(3/2) * (1/(2*z) * (C - 3/2* S / C) + 3/4 *S**2 / C) + A / 8 * (3* S / C * np.sqrt(y) + A * np.sqrt(C/y))
+        
+
+if __name__ == '__main__':
+
+    lambert = Lambert([15945.34 , 0, 0], [ 12214.83899, 10249.46731, 0])
+
+    v0, v1 = lambert.universal(76*60, 'pro')
+    
+    print(f'v0 = {v0} km/s')
+    print(f'v1 = {v1} km/s')
+
+    v0 = lambert.minimum_energy()
+    print(f'v0 = {v0} km/s')
+
+    
+    
