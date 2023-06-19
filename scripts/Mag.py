@@ -195,6 +195,116 @@ def opciones4():
             print("Introduzca un valor válido")
 # Función que pide al usuario en grados la latitud, longitud y altura
 
+def opciones5():
+    '''Cambio de coordenadas'''
+
+    print("Seleccione una opcion:")
+    print("1. Geodésicas a geocentricas")
+    print("2. Geocentricas a geodésicas")
+    print("3. XYZ a DHIF")
+    print("4. Coordenadas XYZ a inerciales")
+    print("5. Coordenadas inerciales a orbitales")
+    print("6. Coordenadas orbitales a ejes cuerpo")
+    print("c para salir")
+
+    while True:
+        try:
+            opcion = input("Opcion: ")
+
+            if opcion == '1':
+                print("Geodésicas a geocentricas")
+                try:
+                    h = float(input("Altura geodética: [km]"))
+                    gdcolat = float(input("Colatitud geodésica: [grados]"))
+                except ValueError:
+                    print("Introduzca un valor válido")
+                geomag.gg_to_geo(h, gdcolat)
+                break
+            elif opcion == '2':
+                print("Geocentricas a geodésicas")
+                try:
+                    h = float(input("Altura geocéntrica: [km]"))
+                    gdcolat = float(input("Colatitud geocéntrica: [grados]"))
+                except ValueError:
+                    print("Introduzca un valor válido")
+                geomag.geo_to_gg(h, gdcolat)
+                break
+            elif opcion == '3':
+                print("XYZ a DHIF")
+                try:
+                    x = float(input("Bx: [nT]"))
+                    y = float(input("By: [nT]"))
+                    z = float(input("Bz: [nT]"))
+                except ValueError:
+                    print("Introduzca un valor válido")
+                geomag.xyz2dhif(x, y, z)
+                break
+            elif opcion == '4':
+                print("Coordenadas XYZ a inerciales")
+                try:
+                    Btheta = float(input("Btheta : [nT]"))
+                    Bphi = float(input("Bphi: [nT]"))
+                    Br = float(input("Br: [nT]"))
+                    lat = float(input("Latitud: [grados]"))
+                    long = float(input("Longitud: [grados]"))
+                    thetag = float(input("Tiempo celestial en Greenxich: [grados]"))
+                except ValueError:
+                    print("Introduzca un valor válido")
+                geomag.transformation2inertial([Br, Btheta, Bphi],lat, long, thetag)
+                break
+            elif opcion == '5':
+                print("Coordenadas inerciales a orbitales")
+                try:
+                    Btheta = float(input("Btheta : [nT]"))
+                    Bphi = float(input("Bphi: [nT]"))
+                    Br = float(input("Br: [nT]"))
+                    lat = float(input("Latitud: [grados]"))
+                    long = float(input("Longitud: [grados]"))
+                    thetag = float(input("Tiempo celestial en Greenxich: [grados]"))
+                except ValueError:
+                    print("Introduzca un valor válido")
+                geomag.transformation2orb([Br, Btheta, Bphi], lat, long, thetag)
+                break
+            elif opcion == '6':
+                print("Coordenadas orbitales a ejes cuerpo")
+                try:
+                    Bxorb = float(input("Bx orb: [nT]: "))
+                    Byorb = float(input("By orb: [nT]: "))
+                    Bzorb = float(input("Bz orb: [nT]: "))
+                    roll = float(input("Roll: [grados]: "))
+                    pitch = float(input("Pitch: [grados]: "))
+                    yaw = float(input("Yaw: [grados]: "))
+                except ValueError:
+                    print("Introduzca un valor válido")
+                geomag.orb2body([Bxorb, Byorb, Bzorb],[roll, pitch, yaw])
+                geomag.linearOrb2body([Bxorb, Byorb, Bzorb],[roll, pitch, yaw])
+            elif opcion == 'c':
+                print("Saliendo del programa")
+                sys.exit()
+            else:
+                print("Opcion no valida")
+                print("Seleccione una opcion:")
+                print("1. Geodésicas a geocentricas")
+                print("2. Geocentricas a geodésicas")
+                print("3. XYZ a DHIF")
+                print("4. Coordenadas XYZ a inerciales")
+                print("5. Coordenadas inerciales a orbitales")
+                print("6. Coordenadas orbitales a ejes cuerpo")
+                print("c para salir")
+        except ValueError:
+            print("Introduzca un valor válido")
+            print("Opcion no valida")
+            print("Seleccione una opcion:")
+            print("1. Geodésicas a geocentricas")
+            print("2. Geocentricas a geodésicas")
+            print("3. XYZ a DHIF")
+            print("4. Coordenadas XYZ a inerciales")
+            print("5. Coordenadas inerciales a orbitales")
+            print("6. Coordenadas orbitales a ejes cuerpo")
+            print("c para salir")
+
+
+
 def latlongh():
     '''Función que pide al usuario en grados la latitud, longitud y altura y año'''
 

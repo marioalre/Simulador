@@ -744,6 +744,12 @@ class Geomag:
         
         cthc  = ctgd*cd - stgd*sd           # Also: sthc = stgd*cd + ctgd*sd
         thc   = np.rad2deg(np.arccos(cthc)) # arccos returns values in [0, pi]
+
+        # Show the results
+        print('Geodetic colatitude: %8.3f' % gdcolat)
+        print('Geocentric colatitude: %8.3f' % thc)
+        print('Geocentric radius: %8.3f' % rad)
+        print('Geodetic height: %8.3f' % h)
         
         return rad, thc, sd, cd
 
@@ -827,6 +833,12 @@ class Geomag:
 
         beta = 90. - np.degrees(np.arctan2(z + ep2*z0, r))
 
+        # Show the results
+        print('Geocentric colatitude: %8.3f' % theta)
+        print('Geodetic colatitude: %8.3f' % beta)
+        print('Geocentric radius: %8.3f' % radius)
+        print('Geodetic height: %8.3f' % height)
+
         return height, beta
     
     def transformation2NED(self, Bvector, epsilon=0):
@@ -859,9 +871,15 @@ class Geomag:
         BE = Bphi
         BD = Btheta * np.sin(epsilon) - Br * np.cos(epsilon)
 
+        # geomagnetic field components in NED coordinates
+        print('Coordenadas en el sistema de referencia local (NED)')
+        print('BN [nT] =', BN)
+        print('BE [nT] =', BE)
+        print('BD [nT] =', BD)
+
         return np.array([BN, BE, BD])
     
-    def transformation2inertial(self, Bvector, thetag = 0):
+    def transformation2inertial(self, Bvector, lat, long, thetag = 0):
         '''Transformation of the earth's magnetic field from local tangent plane coordinate to inertial coordinates
         Geocentric inertial components used in satellite work
         Based on Spacecraft Attitude Determination and Control by James R. Wertz
@@ -869,6 +887,10 @@ class Geomag:
         ----------
         Bvector : array
             The magnetic field vector r, theta, phi
+        lat : float
+            The latitude (declination) of the point where to calculate the magnetic field (in degrees)
+        long : float
+            The longitude from Grenwiwh of the point where to calculate the magnetic field (in degrees)
         thetag : float
             The right ascension of the Greenwich meridian or the sidereal time at 
             Greenwich (in degrees)
@@ -880,11 +902,8 @@ class Geomag:
         
         # thetag indicate declination and celestial time in Greenwich
 
-        phi = Bvector[2] # co-elevation
-        theta = Bvector[1] # elevation
-
-        delta = 90 - phi # declination
-        alpha = theta + thetag # right ascension
+        delta = lat # declination
+        alpha = long + thetag # right ascension
 
         delta = np.radians(delta)
         alpha = np.radians(alpha)
@@ -899,10 +918,14 @@ class Geomag:
         BzI = Br * np.sin(delta) - Btheta * np.cos(delta)
 
         # geomagnetic field components in inertial coordinates
+        print('Coordenadas en el sistema de referencia inercial (Inertial)')
+        print('BxI [nT] =', BxI)
+        print('ByI [nT] =', ByI)
+        print('BzI [nT] =', BzI)
 
         return np.array([BxI, ByI, BzI])
     
-    def transformation2orb(self, Bvector, orbparam, phi, theta, thetag = 0):
+    def transformation2orb(self, Bvector, orbparam, delta, long, thetag = 0):
         '''Transformation of the earth's magnetic field from inertial coordinates to orbital coordinates
         Ecuaciones comprobadas
         Parameters
@@ -914,10 +937,10 @@ class Geomag:
             - true anomaly (in degrees)
             - Right ascension of ascending node (in degrees)
             - inclination (in degrees)
-        phi : float
-            The co-elevation of the point where to calculate the magnetic field (in degrees)
-        theta : float
-            The  East longitude of the point where to calculate the magnetic field (in degrees)
+        delta : float
+            The latitude (declination) of the point where to calculate the magnetic field (in degrees)
+        long : float
+            The longitude from Grenwiwh of the point where to calculate the magnetic field (in degrees)
         thetag : float
             The declination of the Greenwich meridian (in degrees)
         Returns
@@ -926,8 +949,7 @@ class Geomag:
             The magnetic field at the given location in orbital coordinates
         '''
 
-        delta = 90 - phi
-        alpha = theta + thetag
+        alpha = long + thetag 
 
         # to radians
         delta = np.radians(delta)
@@ -957,6 +979,11 @@ class Geomag:
             (-np.cos(ta)*np.sin(RAAN) - np.sin(ta)*np.cos(RAAN)*np.cos(inclination))* \
             (Br*np.cos(delta)*np.sin(alpha) + Btheta*np.sin(delta)*np.sin(alpha) + Bphi*np.cos(alpha)) - \
             (np.sin(ta)*np.sin(inclination))*(Br*np.sin(delta) - Btheta*np.cos(delta))
+
+        print('Coordenadas en el sistema de referencia de la órbita (Orbital)') 
+        print('BxO [nT] =', BxO)
+        print('ByO [nT] =', ByO)
+        print('BzO [nT] =', BzO)
         
         return np.array([BxO, ByO, BzO])
     
@@ -993,6 +1020,11 @@ class Geomag:
             BzO*(np.sin(yaw)*np.sin(pitch)*np.cos(roll) - np.cos(yaw)*np.sin(roll))
         BzB = -BxO*np.sin(pitch) + ByO*np.cos(pitch)*np.sin(roll) + BzO*np.cos(pitch)*np.cos(roll)
 
+        print('Coordenadas en el sistema de referencia del satélite (Cuerpo)')
+        print('BxORB [nT] =', BxB)
+        print('ByORB [nT] =', ByB)
+        print('BzORB [nT] =', BzB)
+
         return np.array([BxB, ByB, BzB])
     
     def linearOrb2body(self, BvectorOrb, attiparam):
@@ -1016,6 +1048,12 @@ class Geomag:
         BxB = BxO - yaw*ByO - pitch*BzO
         ByB = yaw*BxO + ByO - roll*BzO
         BzB = -pitch*BxO + roll*ByO + BzO
+
+        print('Coordenadas en el sistema de referencia del satélite (Cuerpo)')
+        print('Versión lineariada')
+        print('BxORB [nT] =', BxB)
+        print('ByORB [nT] =', ByB)
+        print('BzORB [nT] =', BzB)
 
         return np.array([BxB, ByB, BzB])
     
@@ -1043,6 +1081,11 @@ class Geomag:
         eff = np.sqrt(hsq + z*z)
         dec = np.arctan2(y,x)
         inc = np.arctan2(z,hoz)
+
+        print('D = ', np.degrees(dec))
+        print('H = ', hoz)
+        print('I = ', np.degrees(inc))
+        print('F = ', eff)
         
         return np.degrees(dec), hoz, np.degrees(inc), eff
     
@@ -1090,6 +1133,8 @@ class Geomag:
             B = self.magnetic_field(r[i], theta[i], phi[i], year=year, N=N)[1]
 
             xyz = self.transformation2NED(B)
+
+            # xyz = self.transformation2orb(xyz, [0, 0, 60], phi[i], theta[i], thetag=0)
 
             B_array[i, 0] = round(r[i], 2) # distance
             B_array[i, 1] = round(theta[i], 2) # latitude
@@ -1152,6 +1197,8 @@ class Geomag:
 
             dhif = self.xyz2dhif(xyz[0], xyz[1], xyz[2])
 
+            xyz = self.transformation2orb(xyz, [0, 0, 60], val[2], val[1], thetag=0)
+
             B_array[i, 0] = year
 
             B_array[i, 1] = round(B[0], 2)
@@ -1170,6 +1217,8 @@ class Geomag:
             path = os.getcwd() + '/results/B_array_dates.txt'
             data = pd.DataFrame(B_array, columns=['year', 'Br (nT)', 'Btheta (nT)', 'Bphi (nT)', 'BN (nT)', 'BE (nT)', 'BD (nT)', 'D (deg)', 'H (nT)', 'I (deg)', 'F (nT)'])
             data.to_csv(path)
+
+        return B_array
 
     
     def printresults(self, rtp, savedata=False):
@@ -1398,7 +1447,7 @@ class Geomag:
         plt.show()
 
         return fig, axs
-                                              
+                                                 
 
 if __name__ == '__main__':
     geomag = Geomag()
@@ -1413,10 +1462,16 @@ if __name__ == '__main__':
     print(geomag.octupole(7000, 10, 10, year=2020))
 
     print(geomag.transformation2NED(geomag.magnetic_field(7000, 10, 10, N=12, year=2020)[1]))
+    print(geomag.transformation2orb(geomag.magnetic_field(7000, 10, 10, N=12, year=2020)[1], [0, 0, 60], 10, 10))
 
     # geomag.printresults(7000, 10, 10, year=2020, N=13)
 
-    # geomag.arrayDatesAtLocation([7000, 10, 10], years=[2020, 2021, 2022, 2023, 2024, 2025], N=13, savedata=True)
+    B = geomag.arrayDatesAtLocation([7000, 10, 10], years=[2020, 2021, 2022, 2023, 2024, 2025], N=13, savedata=True)
+    plt.figure()
+    plt.plot(B[:, 3], 'b', label='Br')
+    plt.plot(B[:, 4], 'r', label='Btheta')
+    plt.plot(B[:, 5], 'g', label='Bphi')
+    plt.show()
 
     r = 7000 * np.ones(11)
     theta = np.arange(-90, 91, 36/2)
