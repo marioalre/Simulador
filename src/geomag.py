@@ -1466,6 +1466,13 @@ if __name__ == '__main__':
 
     # geomag.printresults(7000, 10, 10, year=2020, N=13)
 
+    geomag.plotMagneticField(val=[7000, 10, 10], 
+                    year=2020, 
+                    N=13, 
+                    modelos= [0, 0, 0, 0, 1], 
+                    timeRange=[1900, 2025],
+                    absolute_value=False)
+'''
     B = geomag.arrayDatesAtLocation([7000, 10, 10], years=[2020, 2021, 2022, 2023, 2024, 2025], N=13, savedata=True)
     plt.figure()
     plt.plot(B[:, 3], 'b', label='Br')
@@ -1478,7 +1485,7 @@ if __name__ == '__main__':
     phi = np.arange(-180, 181, 18*2)
     
     geomag.arrayofpoints(r, theta, phi, year=2020, N=13, savedata=True)
-
+'''
     
 
 

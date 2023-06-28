@@ -421,9 +421,7 @@ class ECI2ECEF:
         ttt : float
             Julian centuries of terrestrial time
         opt : str
-            '50' for fk4 b1950 precession angles
             '80' for iau 76 precession angles
-            '00' for iau 06 precession angles
         Returns
         ----------
         prec : array
