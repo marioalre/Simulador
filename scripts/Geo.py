@@ -82,6 +82,98 @@ def opciones2a():
         except ValueError:
             print("Introduzca un valor válido")
 
+def opciones3a():
+    '''Plotear el campo geopotencial en un conjunto de puntos'''
+
+    print("Obtencion de una representacion grafica del campo geopotencial")
+    print("Seleccione una opcion:")
+    print("\n")
+    print("1. grafica 2D")
+    print('2. grafica 3D')
+
+    while True:
+        try:
+            opcion = input("Opcion: ")
+            if opcion == '1':
+                print("grafica 2D") 
+                type_ = '2D' 
+                break
+            elif opcion == '2':
+                print("grafica 3D")
+                type_ = '3D'
+                break
+            else:
+                print("Opcion no valida")
+                print("Seleccione una opcion:")
+                print("1. grafica 2D")
+                print('2. grafica 3D')
+        except ValueError:
+            print("Introduzca un valor válido")
+
+    # Preguntar el orden
+    while True:
+        try:
+            n = int(input("Orden del campo geopotencial: "))
+            if n > 1 or n < 360:
+                break
+            else:
+                print("El orden debe ser de 1 a 360")
+        except ValueError:
+            print("Introduzca un valor válido")
+
+
+
+    print("Elija la resolución del mallado")
+    print("1. Alta")
+    print("2. Media")
+    print("3. Baja")
+    while True:
+        try:
+            res = input("Opcion: ")
+            if res == '1':
+                res = 20
+                break
+            elif res == '2':
+                res = 40
+                break
+            elif res == '3':
+                res = 80
+                break
+            else:
+                print("Opcion no valida")
+                print("Seleccione una opcion:")
+                print("1. Alta")
+                print("2. Media")
+                print("3. Baja")
+        except ValueError:
+            print("Introduzca un valor válido")
+
+    # Preguntar el potencial o gravedad
+    print("Seleccione el campo a representar")
+    print("1. Potencial")
+    print("2. Gravedad")
+    while True:
+        try:
+            campo = input("Opcion: ")
+            if campo == '1':
+                campo = 'potential'
+                break
+            elif campo == '2':
+                campo = 'gravity'
+                break
+            else:
+                print("Opcion no valida")
+                print("Seleccione una opcion:")
+                print("1. Potencial")
+                print("2. Gravedad")
+        except ValueError:
+            print("Introduzca un valor válido")
+
+    d1, d2, d3, = geopot.calculate(res, n, campo)
+    data = [d1, d2, d3]
+
+    geopot.plot_potential(data, dtype=type_)
+
 
 def latlongh():
     '''Función que pide al usuario en grados la latitud, longitud y altura y año'''
@@ -117,8 +209,8 @@ def opcion212a():
     print("Leer array de puntos")
     print("Los datos deben estar en la carpeta data")
     print("Los datos deben estar en formato .txt")
-    print("Los datos deben estar en el siguiente orden: lat, long, h")
-    print("Los datos deben estar separados por espacios")
+    print("Los datos deben estar en el siguiente orden: lat.txt, long.txt, h.txt")
+    print("Los datos deben en la carpeta data")
 
     # Leer array de puntos
     lat = np.loadtxt('data/lat.txt')

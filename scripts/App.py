@@ -4,7 +4,7 @@
 import os
 import sys
 from scripts.Mag import opciones1, opciones2, opciones3, opciones4, opciones5
-from scripts.Geo import opciones1a, opciones2a
+from scripts.Geo import opciones1a, opciones2a, opciones3a
 from scripts.Prop import opciones1b, opciones2b
 from scripts.Coor import opciones1c, opciones2c, opciones3c, opciones4c
 from scripts.DPO import opciones1d, opciones2d, opciones3d
@@ -111,17 +111,14 @@ def menu_determinacion_preliminar():
         opcion = input("Opcion: ")
         if opcion == '1':
             print("3 observaciones del vector posicion")
-            print("En proceso de desarrollo")
             opciones1d()
             break
         elif opcion == '2':
             print("observaciones de latitud, longitud, altura y variacion de latitud, longitud y altura")
-            print("En proceso de desarrollo")
             opciones2d()
             break
         elif opcion == '3':
             print("observaciones desde la Tierra, desde el centro de la Tierra y tiempo")
-            print("En proceso de desarrollo")
             opciones3d()
             break
         elif opcion == '4':
@@ -251,8 +248,7 @@ def menu_geopot():
     print("\n")
     print("1. Campo geopotencial en un punto")
     print("2. Campo geopotencial en un conjunto de puntos")
-    print("3. Campo geopotencial a lo largo del tiempo en un punto")
-    print("4. Ploteo de los resultados")
+    print("3. Ploteo de los resultados")
     print("c. Exit. Salir")
 
     while True:
@@ -267,7 +263,7 @@ def menu_geopot():
             break
         elif opcion == '3':
             print("En proceso de desarrollo")
-            # opciones3a()
+            opciones3a()
             break
         elif opcion == 'c':
             print("Saliendo del programa")
