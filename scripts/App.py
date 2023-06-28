@@ -286,11 +286,7 @@ def menu_campo_magnetico():
     print("\n")
     print("Seleccione una opcion:")
     print("\n")
-    print("1. Campo magnetico en un punto")
-    print("2. Campo magnetico en un conjunto de puntos")
-    print("3. Campo magnético a lo largo del tiempo en un punto")
-    print("4. Ploteo de los resultados")
-    print("5. Cambio de coordenadas")
+
     print("c. Exit. Salir")
 
     while True:
