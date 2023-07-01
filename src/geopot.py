@@ -28,6 +28,20 @@ class Geopot():
         self.r = r * 1000                # Radius [m]
         self.elev = np.radians(elevation)      # Elevation angle [rad]
         self.azi = np.radians(azimuth)         # Azimuth angle [rad]
+
+        # Avoid the singularity
+        if -1e-8 < self.elev < 1e-8:
+            self.elev = 1e-8
+        if np.pi/2 - 1e-8 < self.elev < np.pi/2 + 1e-8:
+            self.elev = np.pi/2 - 1e-8
+        if -np.pi/2 - 1e-8 < self.elev < -np.pi/2 + 1e-8:
+            self.elev = -np.pi/2 + 1e-8           
+        if -1e-8 < self.azi < 1e-8:
+            self.azi = 1e-8
+        if np.pi - 1e-8 < self.azi < np.pi + 1e-8:
+            self.azi = np.pi - 1e-8
+        if -np.pi - 1e-8 < self.azi < -np.pi + 1e-8:
+            self.azi = -np.pi + 1e-8
         
         self.grav = np.array([-self.mu / self.r**2, 0, 0])
         self.pot = self.mu / self.r
@@ -60,7 +74,6 @@ class Geopot():
             Pn = P[m, n]
             Pnd = Pd[m, n]
             
-
             self.pot = self.pot + self.mu /self.r * (self.a / self.r)**n * Pn * (C * np.cos(m * self.azi) + S * np.sin(m * self.azi))
 
             self.grav[0] = self.grav[0] - self.a**n * (n+1) * self.mu * Pn * (C*np.cos(m * self.azi) + S * np.sin(m * self.azi)) / self.r**(n+2)
@@ -251,10 +264,7 @@ class Geopot():
             data = pd.DataFrame(values, columns=['r km', 'Lat', 'Long', 'Potencias', 'g1', 'g2', 'g3'])
             data.to_csv(path)
 
-
         return values
-
-
 
     def calculate(self, resolucion=90, order=20, option='potential'):
         '''Calculate the potential and gravity field
@@ -482,7 +492,7 @@ if __name__ == '__main__':
     Potencial.arraylatlong(np.linspace(-90, 90, 19),
                            np.linspace(-180, 180, 19), 
                            7000*np.ones_like(np.linspace(-180, 180, 19)), 
-                           order=15, 
+                           order=360, 
                            savedata=True)
 
     # data1, data2, data3 = Potencial.calculate(resolucion=40, order=15, option='gravity')

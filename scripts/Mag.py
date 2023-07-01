@@ -55,6 +55,7 @@ def opciones1():
                 print("3. Cuadripolo")
                 print("4. Octupolo")
                 print("5. Modelo completo")
+                print("6. Salir")
 
             print("Guardando datos en results/magPoint.txt")
             geomag.printresults(val, savedata=True)
