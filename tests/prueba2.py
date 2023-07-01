@@ -29,14 +29,16 @@ if __name__ == '__main__':
 
 
     print('--------------------------------------------------')
-    h = 80000 # km
-    e = 1.4 # unitless
-    i = 30 * np.pi / 180 # rad
-    Omega = 40 * np.pi / 180 # rad
-    omega = 60 * np.pi / 180 # rad
-    nu = 30 * np.pi / 180 # rad
+    
+    # Orbital parameters a es el radio de la tierra mas la altura de 500 km
+    a = 6378.137 + 500 # km
+    e = 0 # unitless
+    i = 60 * np.pi / 180 # rad
+    Omega = 0 * np.pi / 180 # rad
+    omega = 0 * np.pi / 180 # rad
+    nu = 0 * np.pi / 180 # rad
 
-    orbit = Orb2rv(h=h, e=e,Omega= Omega, omega=omega, i=i, nu=nu, body=cuerpo)
+    orbit = Orb2rv(a=a, e=e,Omega= Omega, omega=omega, i=i, nu=nu, body=cuerpo)
 
     print('Position vector: {} km'.format(orbit.r))
     print('Velocity vector: {} km/s'.format(orbit.v))

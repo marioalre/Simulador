@@ -5,10 +5,16 @@ from src.utilities import Utilities
 
 class KeplerPropagator:
 
-    def __init__(self, body):
-        self.mu = body.mu
-        self.radius = body.radius
-        self.body = body
+    def __init__(self, body=None):
+        '''Initialize the propagator'''
+        if body is None:
+            self.mu = 398600.4418
+            self.radius = 6378.1363
+            self.J2 = 0.0010826267
+        else:
+            self.mu = body.mu
+            self.radius = body.radius
+            self.J2 = body.J2
         self.small = 1e-10
         self.iterations = 50
 
@@ -825,7 +831,7 @@ class KeplerPropagator:
     def Pkepler(self, ro, vo, dtsec, ndot=0, nddot=0, savedata=False):
         re = self.radius         # km
         mu = self.mu      # km3/s2
-        j2 = self.body.J2      # km5/s2
+        j2 = self.J2      # km5/s2
 
         [p, a, e, i, Omega, omega, nu, arglat, truelon, lonper, m] = self.rv2coe(ro, vo)
         n = np.sqrt(mu/(a**3))
@@ -960,7 +966,7 @@ class KeplerPropagator:
         '''
 
         # Decode the TLE string
-        util = Utilities(self.body)
+        util = Utilities()
 
         tle_data = util.decode_tle(tle_file)
 

@@ -1,5 +1,5 @@
 from src.utilities import Utilities
-from src.CelestialBodies import CelestialBodies
+from src.kepler_propagator import KeplerPropagator
 import numpy as np
 import sys
 import pandas as pd
@@ -127,6 +127,36 @@ def opciones3d():
         except ValueError:
             print("Introduzca un valor válido")
 
+def opciones4d():
+    '''Decodificar TLE'''
+    print("Decodificar TLE")
+    print("Introduzca la ruta del .TLE")
+
+    while True:
+        try:
+            path = input("Ruta: ")
+            data = util.decode_tle(path)
+
+            data = util.decode_tle('data/paz.tle')
+            print(f'Nombre: {data["name"]}')
+            print(f'Inclinacion: {data["inclination"]}')
+            print(f'RAAN: {data["raan"]}')
+            print(f'Excentricidad: {data["eccentricity"]}')
+            print(f'Argumento del parigeo: {data["arg_of_perigee"]}')
+            print(f'Anomalía media: {data["mean_anomaly"]}')
+            print(f'Movimiento medio: {data["mean_motion"]}')
+            print(f'Epoch: {data["epoch"]}')
+            print(f'1º derivada del movimiento medio: {data["d_mean_motion"]}')
+            print(f'1º derivada del movimiento medio: {data["dd_mean_motion"]}')
+
+            kepler = KeplerPropagator()
+            r, v = kepler.RVFromTLE(path)
+
+            print("Posicion: ", r, "km")
+            print("Velocidad: ", v, "km/s")
+            break
+        except ValueError:
+            print("Introduzca un valor válido")
 
 def vectoress():
     '''Preguntar por 3 vectores posición'''

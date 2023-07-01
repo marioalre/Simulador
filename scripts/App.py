@@ -7,7 +7,7 @@ from scripts.Mag import opciones1, opciones2, opciones3, opciones4, opciones5
 from scripts.Geo import opciones1a, opciones2a, opciones3a
 from scripts.Prop import opciones1b, opciones2b
 from scripts.Coor import opciones1c, opciones2c, opciones3c, opciones4c
-from scripts.DPO import opciones1d, opciones2d, opciones3d
+from scripts.DPO import opciones1d, opciones2d, opciones3d, opciones4d
 
 
 # pantalla de bienvenida del simulador con prints
@@ -97,15 +97,14 @@ def menu_determinacion_preliminar():
     print("Bienvenido al simulador de la determinacion preliminar de la orbita")
     print("\n")
     print("Se puede calcular la orbita de un satelite a partir de un conjunto de observaciones")
-    print("Se utiliza el modelo SGP4")
     print("\n")
     print("Seleccione una opcion:")
     print("\n")
     print("1. 3 observaciones del vector posicion") 
     print("2. observaciones de latitud, longitud, altura y variacion de latitud, longitud y altura")
     print("3. observaciones desde la Tierra, desde el centro de la Tierra y tiempo")
-    print("4. observaciones de latitud, longitud, altura")
-    print("5 Salir")
+    print("4. r y v desde un TLE")
+    print("5. Salir")
 
     while True:
         opcion = input("Opcion: ")
@@ -122,9 +121,9 @@ def menu_determinacion_preliminar():
             opciones3d()
             break
         elif opcion == '4':
-            print("observaciones de latitud, longitud, altura")
+            print("r y v desde un TLE")
             print("En proceso de desarrollo")
-            # opciones1c('4')
+            opciones4d()
             break
         elif opcion == '5':
             print("Saliendo del programa")
@@ -136,7 +135,8 @@ def menu_determinacion_preliminar():
             print("1. 3 observaciones del vector posicion") 
             print("2. observaciones de latitud, longitud, altura y variacion de latitud, longitud y altura")
             print("3. observaciones desde la Tierra, desde el centro de la Tierra y tiempo")
-            print("4. observaciones de latitud, longitud, altura")
+            print("4. r y v desde un TLE")
+            print("5. Salir")
 
 
 def menu_cambio_coordenadas():
@@ -159,27 +159,22 @@ def menu_cambio_coordenadas():
         opcion = input("Opcion: ")
         if opcion == '1':
             print("Cambio de coordenadas ECI a ECEF")
-            print("En proceso de desarrollo")
             opciones1c('1')
             break
         elif opcion == '2':
             print("Cambio de coordenadas ECEF a ECI")
-            print("En proceso de desarrollo")
             opciones1c('2')
             break
         elif opcion == '3':
             print("RV a COE")
-            print("En proceso de desarrollo")
             opciones2c()
             break
         elif opcion == '4':
             print("COE a RV")
-            print("En proceso de desarrollo")
             opciones3c()
             break
         elif opcion == '5':
             print("ECEF a latitud, longitud y altura")
-            print("En proceso de desarrollo")
             opciones4c()
             break
         elif opcion == 'c':
@@ -202,7 +197,6 @@ def meno_propagadores():
     print("Bienvenido al simulador de propagadores de orbitas")
     print("\n")
     print("Se puede calcular la orbita de un satelite en un instante de tiempo o a lo largo del tiempo")
-    print("Se utiliza el modelo SGP4")
     print("\n")
     print("Seleccione una opcion:")
     print("\n")
