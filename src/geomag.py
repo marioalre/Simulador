@@ -1152,6 +1152,8 @@ class Geomag:
             data = pd.DataFrame(B_array, columns=['r (km)', 'theta (deg)', 'phi (deg)', 'Br (nT)', 'Btheta (nT)', 'Bphi (nT)', 'BN (nT)', 'BE (nT)', 'BD (nT)'])
             data.to_csv(path)
 
+            print('Datos guardados en ' + path)
+
         return B_array
     
     def arrayDatesAtLocation(self, val, years, N=3, savedata=False):

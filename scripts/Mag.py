@@ -112,7 +112,7 @@ def opciones2():
             print("Introduzca un valor válido")
 
         geomag.arrayofpoints(h, lat, long, year, N=13, savedata=True)[1]
-        print("Datos guardados en results/geomag.csv")
+
         break
 
 def opcion211():
