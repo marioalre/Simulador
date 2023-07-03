@@ -263,6 +263,7 @@ class Geopot():
             path = os.getcwd() + '/results/dataEGM96.csv'
             data = pd.DataFrame(values, columns=['r km', 'Lat', 'Long', 'Potencias', 'g1', 'g2', 'g3'])
             data.to_csv(path)
+            print('Data saved in results/dataEGM96.csv')
 
         return values
 

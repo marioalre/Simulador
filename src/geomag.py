@@ -1216,7 +1216,7 @@ class Geomag:
 
 
         if savedata:
-            path = os.getcwd() + '/results/B_array_dates.txt'
+            path = os.getcwd() + '/results/B_array_dates.csv'
             data = pd.DataFrame(B_array, columns=['year', 'Br (nT)', 'Btheta (nT)', 'Bphi (nT)', 'BN (nT)', 'BE (nT)', 'BD (nT)', 'D (deg)', 'H (nT)', 'I (deg)', 'F (nT)'])
             data.to_csv(path)
 
@@ -1262,7 +1262,7 @@ class Geomag:
         print('Vertical component (Z): ' + str(xyz[2]) + ' nT')
 
         if savedata:
-            path = os.getcwd() + '/results/magPoint.txt'
+            path = os.getcwd() + '/results/magPoint.csv'
 
             # Write to file
             with open(path, 'w') as f:
@@ -1275,7 +1275,7 @@ class Geomag:
                 f.write('East component (Y): ' + str(xyz[1]) + ' nT\n')
                 f.write('Vertical component (Z): ' + str(xyz[2]) + ' nT\n')
 
-                print('Results saved to /results/magPoint.txt')
+                print('Results saved to /results/magPoint.csv')
     
     def plotMagneticField(self, val, year=2020, N=13, modelos=[1, 0, 0, 0, 1], timeRange=[1900, 2025], absolute_value=False):
         '''This function plots the magnetic field at a given location
@@ -1474,13 +1474,14 @@ if __name__ == '__main__':
                     modelos= [0, 0, 0, 0, 1], 
                     timeRange=[1900, 2025],
                     absolute_value=False)
-'''
+
     B = geomag.arrayDatesAtLocation([7000, 10, 10], years=[2020, 2021, 2022, 2023, 2024, 2025], N=13, savedata=True)
     plt.figure()
     plt.plot(B[:, 3], 'b', label='Br')
     plt.plot(B[:, 4], 'r', label='Btheta')
     plt.plot(B[:, 5], 'g', label='Bphi')
     plt.show()
+    '''
 
     r = 7000 * np.ones(11)
     theta = np.arange(-90, 91, 36/2)

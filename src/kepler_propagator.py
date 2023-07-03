@@ -891,7 +891,7 @@ class KeplerPropagator:
             print('Datos guardados en results/Pkepler.csv')
             print('\n')
 
-        return 
+        return r, v
 
     def propagate(self, r0, v0, tf, dt, dn=0, ddn=0, type='Pkepler', savedata=True):
         '''Propagate the orbit forward in time
@@ -937,7 +937,7 @@ class KeplerPropagator:
 
         for i, dt in enumerate(time):
             if type == 'Pkepler':
-                r0, v0 = self.Pkepler(r0, v0, dt, dn, ddn)
+                r0, v0 = self.Pkepler(r0, v0, dt)
             elif type == 'kepler':
                 r0, v0 = self.kepler(r0, v0, dt)
             r[i+1 , :] = r0

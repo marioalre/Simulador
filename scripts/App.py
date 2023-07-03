@@ -5,7 +5,7 @@ import os
 import sys
 from scripts.Mag import opciones1, opciones2, opciones3, opciones4, opciones5
 from scripts.Geo import opciones1a, opciones2a, opciones3a
-from scripts.Prop import opciones1b, opciones2b
+from scripts.Prop import opciones1b, opciones2b, opciones3b
 from scripts.Coor import opciones1c, opciones2c, opciones3c, opciones4c
 from scripts.DPO import opciones1d, opciones2d, opciones3d, opciones4d
 
@@ -217,8 +217,7 @@ def meno_propagadores():
             break
         elif opcion == '3':
             print("Ploteo de los resultados")
-            print("En proceso de desarrollo")
-            # opciones3b()
+            opciones3b()
             break
         elif opcion == 'c':
             print("Saliendo del programa")

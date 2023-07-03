@@ -1,6 +1,7 @@
 from src.geomag import Geomag
 import sys
 import numpy as np
+import pandas as pd
 
 geomag = Geomag()
 
@@ -149,17 +150,27 @@ def opcion211():
 def opcion212():
     '''Esta función lee un array de puntos'''
     print("Leer array de puntos")
-    print("Los datos deben estar en la carpeta data")
-    print("Los datos deben estar en formato .txt")
-    print("Los datos deben estar en el siguiente orden: lat, long, h, year")
-    print("Los datos deben estar separados por espacios")
+    print("Los datos deben estar en formato .txt o .csv")
+    print("Los datos deben estar en el siguiente orden: index, lat, long, h")
+    print("Los datos deben estar separados por comas")
     print("Los datos deben estar en columnas")
 
     # Leer array de puntos
-    lat = np.loadtxt('data/lat.txt')
-    long = np.loadtxt('data/long.txt')
-    h = np.loadtxt('data/h.txt')
-    year = np.loadtxt('data/year.txt')
+    path = input("Nombre del archivo: ")
+
+    data = pd.read_csv(path, skiprows=0, index_col=0)
+
+    lat = data['lat'].to_numpy()
+    long = data['long'].to_numpy()
+    h = data['alt'].to_numpy()
+    
+    # preguntar al usuario el año
+    while True:
+        try:
+            year = float(input("Año: [decimal]"))
+            break
+        except ValueError:
+            print("Introduzca un valor válido")
 
     return lat, long, h, year
 

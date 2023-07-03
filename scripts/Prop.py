@@ -1,4 +1,6 @@
 import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
 import sys
 from src.kepler_propagator import KeplerPropagator
 from src.orb2rv import Orb2rv
@@ -90,7 +92,33 @@ def opciones2b():
                 print("2. Metodo de Pkepler")
 
         except ValueError:
-            print("Introduzca un valor válido")    
+            print("Introduzca un valor válido")  
+
+def opciones3b():
+    print("Plot results")
+    path_data_csv = input("Path del archivo csv: ")
+    plot_results(path_data_csv)
+
+def plot_results(path_data_csv):
+    '''Plot results'''  
+    # read csv
+    data = pd.read_csv(path_data_csv)
+
+    r = np.array([data['x'], data['y'], data['z']]).T
+    v = np.array([data['vx'], data['vy'], data['vz']]).T
+    
+    # 3d plot
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    ax.plot(0, 0, 0, 'o', markersize = 13, label='Cuerpo central')
+    ax.plot(r[:, 0], r[:, 1], r[:, 2], label='Orbita')
+    ax.set_xlabel('X (km)')
+    ax.set_ylabel('Y (km)')
+    ax.set_zlabel('Z (km)')
+    ax.set_title('Órbita')
+    ax.legend()
+    plt.show()
 
 def elegir_cuerpo_central():
     '''Elegir el cuerpo central'''
